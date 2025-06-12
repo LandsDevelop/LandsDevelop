@@ -1,8 +1,9 @@
+// File: ProjectDetails.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   MapPin, IndianRupee, ArrowLeft, Users, Ruler, Compass,
-  CheckSquare, XSquare, AlertTriangle, Tag, ArrowLeftRight
+  CheckSquare, XSquare, AlertTriangle, Tag, ArrowLeftRight, Phone, Mail
 } from 'lucide-react';
 
 const ProjectDetails: React.FC = () => {
@@ -10,6 +11,7 @@ const ProjectDetails: React.FC = () => {
   const [project, setProject] = useState<any | null>(null);
   const [dealStatus, setDealStatus] = useState<'open' | 'closed'>('open');
   const [loading, setLoading] = useState(true);
+  const [showContact, setShowContact] = useState(false);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -18,7 +20,7 @@ const ProjectDetails: React.FC = () => {
         const data = await res.json();
         if (res.ok) {
           setProject(data.project);
-          setDealStatus(data.project.dealStatus);
+          setDealStatus(data.project.dealStatus || 'open');
         }
       } catch (err) {
         console.error('Error fetching project:', err);
@@ -29,16 +31,28 @@ const ProjectDetails: React.FC = () => {
     fetchProject();
   }, [id]);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Approved':
-        return <CheckSquare className="h-4 w-4 text-green-600" />;
-      case 'In Progress':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      default:
-        return <XSquare className="h-4 w-4 text-red-600" />;
-    }
+  const handleShowContact = async () => {
+    const email = localStorage.getItem('email');
+    if (!email || !project?._id) return alert('Please login first');
+
+    await fetch('http://localhost:5174/api/interests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: email,
+        propertyId: project._id
+      })
+    });
+
+    setShowContact(true);
   };
+
+  if (loading) return <p className="text-center mt-12">Loading project details...</p>;
+  if (!project) return <p className="text-center text-red-600 mt-12">Project not found.</p>;
+
+  const dimensions = project.dimensions?.match(/(\d+)\s*ft\s*x\s*(\d+)\s*ft/);
+  const length = dimensions?.[1];
+  const width = dimensions?.[2];
 
   const DealStatusBadge = ({ status }: { status: 'open' | 'closed' }) => (
     <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
@@ -48,13 +62,6 @@ const ProjectDetails: React.FC = () => {
       <span className="font-medium capitalize">{status}</span>
     </div>
   );
-
-  if (loading) return <p className="text-center mt-12">Loading project details...</p>;
-  if (!project) return <p className="text-center text-red-600 mt-12">Project not found.</p>;
-
-  const dimensions = project.dimensions?.match(/(\d+)\s*ft\s*x\s*(\d+)\s*ft/);
-  const length = dimensions?.[1];
-  const width = dimensions?.[2];
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
@@ -73,7 +80,7 @@ const ProjectDetails: React.FC = () => {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="relative h-[500px]">
             <img
-              src={project.image}
+              src={`http://localhost:5174${project.imageUrl}`}
               alt={project.title}
               className="w-full h-full object-cover"
             />
@@ -160,6 +167,37 @@ const ProjectDetails: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Contact Section */}
+<div className="border-t pt-8 mt-8">
+  <h2 className="text-2xl font-semibold mb-4">Contact Owner</h2>
+
+  {!showContact ? (
+    <button
+      onClick={project.dealStatus === 'closed' ? undefined : handleShowContact}
+      disabled={project.dealStatus === 'closed'}
+      className={`px-6 py-2 rounded-lg font-semibold ${
+        project.dealStatus === 'closed'
+          ? 'bg-gray-400 text-white cursor-not-allowed'
+          : 'bg-teal-600 text-white hover:bg-teal-700'
+      }`}
+    >
+      Show Contact Details
+    </button>
+  ) : (
+    <div className="space-y-2 text-gray-700 mt-4">
+      <p className="flex items-center gap-2">
+        <Phone className="h-5 w-5 text-teal-600" />
+        {project.contactPhone || 'Not Provided'}
+      </p>
+      <p className="flex items-center gap-2">
+        <Mail className="h-5 w-5 text-teal-600" />
+        {project.contactEmail || 'Not Provided'}
+      </p>
+    </div>
+  )}
+</div>
+
 
             <div className="text-center mt-8">
               <Link to="/development-plots" className="text-teal-600 hover:underline inline-flex items-center gap-2">

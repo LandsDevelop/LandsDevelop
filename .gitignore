@@ -1,0 +1,44 @@
+# Node.js
+node_modules/
+.env
+.env.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+build/
+
+# Frontend specific (React/Vite)
+Frontend/node_modules/
+Frontend/dist/
+Frontend/build/
+Frontend/.env*
+
+# Backend specific (Node/Express)
+backend/node_modules/
+backend/uploads/
+backend/.env*
+
+# Editor settings
+.vscode/
+.idea/
+
+# Test coverage
+coverage/
+
+# Database/SQLite
+*.sqlite
+*.db
+
+# Misc
+*.local

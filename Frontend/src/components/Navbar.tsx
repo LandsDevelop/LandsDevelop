@@ -1,94 +1,144 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Building2, User, LogOut } from 'lucide-react';
+// Navbar.tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { User, LogOut, List } from 'lucide-react';
+import LoginModal from './LoginModal';
 
 const Navbar: React.FC = () => {
-  const location = useLocation();
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [listingOpen, setListingOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const refreshAuth = () => {
+    const token = localStorage.getItem('token');
+    const name = localStorage.getItem('name');
+    setIsAuthenticated(!!token);
+    setUserName(name);
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
-  }, [location]); // Re-evaluate on route change
+    refreshAuth();
+  }, []);
 
-  const handleSignOut = () => {
-    localStorage.removeItem('token');
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+        setListingOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.clear();
     setIsAuthenticated(false);
+    setUserName(null);
     navigate('/');
   };
 
-  const scrollToContact = () => {
-    if (location.pathname === '/') {
-      const contactSection = document.querySelector('#contact-section');
-      if (contactSection) {
-        contactSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    } else {
-      window.location.href = '/#contact-section';
-    }
-  };
-
   return (
-    <div className="fixed top-0 left-0 w-full z-50 bg-white shadow">
-      <nav className="bg-gradient-to-r from-teal-600 to-teal-800 text-white">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-wrap justify-between items-center">
-          <Link to="/" className="flex items-center space-x-2">
-            <Building2 className="h-8 w-8" />
-            <span className="text-2xl font-bold">LandsDevelop</span>
-          </Link>
+    <nav className="bg-white shadow fixed w-full z-50">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+        <Link to="/" className="text-2xl font-bold text-teal-700">LandsDevelop</Link>
 
-          <div className="hidden md:flex space-x-6">
-            <Link to="/" className="hover:text-teal-200">Home</Link>
-            <Link to="/about" className="hover:text-teal-200">About Us</Link>
-            <Link to="/development-plots" className="hover:text-teal-200">Development Plots</Link>
-            <button onClick={scrollToContact} className="hover:text-teal-200">Contact</button>
-          </div>
-
-          <div className="flex items-center space-x-4 mt-4 md:mt-0">
-            {isAuthenticated ? (
-              <div className="relative">
-                <button
-                  onClick={() => setShowDropdown(!showDropdown)}
-                  className="bg-white text-teal-600 px-4 py-2 rounded-full font-semibold hover:bg-teal-50 flex items-center gap-2"
-                >
-                  <User className="h-5 w-5" />
-                  <span>Account</span>
-                </button>
-                {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
-                    <Link
-                      to="/profile"
-                      className="block px-4 py-2 text-gray-800 hover:bg-teal-50 flex items-center gap-2"
-                    >
-                      <User className="h-4 w-4" />
-                      My Profile
-                    </Link>
-                    <button
-                      onClick={handleSignOut}
-                      className="block w-full text-left px-4 py-2 text-gray-800 hover:bg-teal-50 flex items-center gap-2"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <Link to="/login" className="bg-white text-teal-600 px-6 py-2 rounded-full font-semibold hover:bg-teal-50">
-                  Login
-                </Link>
-                <Link to="/post-property" className="border-2 border-white text-white px-6 py-2 rounded-full font-semibold hover:bg-white hover:text-teal-600">
-                  Post Property
-                </Link>
-              </>
-            )}
-          </div>
+        <div className="flex-1 flex justify-center space-x-6">
+          <Link to="/" className="text-teal-700 hover:text-teal-600">Home</Link>
+          <Link to="/about" className="text-teal-700 hover:text-teal-600">About Us</Link>
+          <Link to="/development-plots" className="text-teal-700 hover:text-teal-600">Development Plots</Link>
         </div>
-      </nav>
-    </div>
+
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => {
+              if (isAuthenticated) navigate('/post-property');
+              else setShowLoginModal(true);
+            }}
+            className="border-2 border-teal-600 text-teal-600 px-4 py-2 rounded-full font-semibold hover:bg-white hover:text-teal-600"
+          >
+            Post Property
+          </button>
+
+          {isAuthenticated ? (
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="border-2 border-teal-600 bg-white text-teal-600 px-4 py-2 rounded-full font-semibold hover:bg-teal-50 flex items-center gap-2"
+              >
+                <User className="h-5 w-5" />
+                <span>{userName || 'Account'}</span>
+              </button>
+
+              {showDropdown && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg z-50 py-2 border">
+                  <Link
+                    to="/profile"
+                    className="block px-4 py-2 text-gray-800 hover:bg-teal-50"
+                  >
+                    My Profile
+                  </Link>
+
+                  <div className="relative">
+                    <button
+                      onClick={() => setListingOpen(!listingOpen)}
+                      className="w-full text-left px-4 py-2 text-gray-800 hover:bg-teal-50 flex items-center gap-2"
+                    >
+                      <List className="h-4 w-4" />
+                      My Listings
+                    </button>
+
+                    {listingOpen && (
+                      <div className="mt-1 ml-6 space-y-1">
+                        <Link
+                          to="/user-posted-properties"
+                          className="block px-4 py-2 text-gray-700 hover:bg-teal-50"
+                        >
+                          Posted Properties
+                        </Link>
+                        <Link
+                          to="/interest-shown"
+                          className="block px-4 py-2 text-gray-700 hover:bg-teal-50"
+                        >
+                          Owners You Contacted
+                        </Link>
+                        <Link
+                          to="/interested-in-your-properties"
+                          className="block px-4 py-2 text-gray-700 hover:bg-teal-50"
+                        >
+                          Interested in Your Properties
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-100"
+                  >
+                    <LogOut className="h-4 w-4 inline mr-2" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="border-2 border-teal-600 bg-white text-teal-600 px-6 py-2 rounded-full font-semibold hover:bg-teal-50"
+            >
+              Login
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} onLoginSuccess={refreshAuth} />}
+    </nav>
   );
 };
 

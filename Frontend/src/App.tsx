@@ -3,9 +3,8 @@ import { Routes, Route, Link } from 'react-router-dom';
 import {
   Building2, MapPin, Users, Ruler, ArrowRight
 } from 'lucide-react';
-//import PropertyCard from './components/PropertyCard';
+
 import SearchBar from './components/SearchBar';
-import Login from './components/Login';
 import Navbar from './components/Navbar';
 import PostProperty from './components/PostProperty';
 import ChatWindow from './components/ChatWindow';
@@ -13,7 +12,11 @@ import PropertyDetails from './components/PropertyDetails';
 import DevelopmentPlots from './components/DevelopmentPlots';
 import ProjectDetails from './components/ProjectDetails';
 import AboutUs from './components/AboutUs';
-//import UserProfile from './components/UserProfile';
+import UserProfile from './components/UserProfile';
+import EditProperty from "./components/EditProperty";
+import InterestShown from './components/Interestshown';
+import InterestedInYourProperties from './components/InterestedInYourProperties';
+import UserPostedProperties from './components/UserPostedProperties';
 
 function HomePage() {
   const [searchParams, setSearchParams] = useState({
@@ -30,7 +33,6 @@ function HomePage() {
       try {
         const res = await fetch('http://localhost:5174/api/all');
         const data = await res.json();
-        console.log("Data fetched:", data); // Add this to debug
         setFeaturedProjects(data.slice(0, 4));
         setFilteredProjects(data.slice(0, 4));
       } catch (err) {
@@ -39,7 +41,6 @@ function HomePage() {
     };
     fetchProjects();
   }, []);
-  
 
   const handleSearch = (params: typeof searchParams) => {
     setSearchParams(params);
@@ -96,59 +97,61 @@ function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-{filteredProjects.map(project => (
-  <Link
-    key={project.id}
-    to={`/project/${project.id}`}
-    className="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full hover:shadow-xl transition"
-  >
-    <div className="relative h-48">
-      <img
-        src={project.image}
-        alt={project.title}
-        className="w-full h-full object-cover"
-      />
-      <div className="absolute top-4 right-4">
-        <span className="bg-teal-600 text-white px-3 py-1.5 rounded-full text-sm">
-          {project.developmentType}
-        </span>
-      </div>
-    </div>
+              {filteredProjects.map(project => (
+                <Link
+                  key={project._id}
+                  to={`/project/${project._id}`}
+                  className="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full hover:shadow-xl transition"
+                >
+                  <div className="relative h-48">
+                    <img
+                      src={`http://localhost:5174${project.imageUrl}`}
+                      alt={project.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://via.placeholder.com/400x200?text=No+Image';
+                      }}
+                    />
+                    <div className="absolute top-4 right-4">
+                      <span className="bg-teal-600 text-white px-3 py-1.5 rounded-full text-sm">
+                        {project.developmentType}
+                      </span>
+                    </div>
+                  </div>
 
-    <div className="p-4 flex-1 flex flex-col">
-      <h3 className="text-lg font-bold mb-2 line-clamp-2 min-h-[3.5rem]">{project.title}</h3>
-      <div className="flex items-center gap-2 mb-4">
-        <MapPin className="h-4 w-4 text-gray-600 flex-shrink-0" />
-        <p className="text-gray-600 text-sm truncate">{project.location}</p>
-      </div>
+                  <div className="p-4 flex-1 flex flex-col">
+                    <h3 className="text-lg font-bold mb-2 line-clamp-2 min-h-[3.5rem]">{project.title}</h3>
+                    <div className="flex items-center gap-2 mb-4">
+                      <MapPin className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                      <p className="text-gray-600 text-sm truncate">{project.location}</p>
+                    </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <Ruler className="h-4 w-4 text-teal-600" />
-          <div>
-            <p className="text-xs text-gray-600">Total Area</p>
-            <p className="font-semibold text-sm">{project.totalArea}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-teal-600" />
-          <div>
-            <p className="text-xs text-gray-600">Ratio</p>
-            <p className="font-semibold text-sm">{project.developerRatio}</p>
-          </div>
-        </div>
-      </div>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="flex items-center gap-2">
+                        <Ruler className="h-4 w-4 text-teal-600" />
+                        <div>
+                          <p className="text-xs text-gray-600">Total Area</p>
+                          <p className="font-semibold text-sm">{project.totalArea}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-teal-600" />
+                        <div>
+                          <p className="text-xs text-gray-600">Ratio</p>
+                          <p className="font-semibold text-sm">{project.developerRatio}</p>
+                        </div>
+                      </div>
+                    </div>
 
-      <div className="mt-auto flex justify-between items-center pt-4 border-t">
-        <div className="text-teal-600 font-bold text-sm">
-          Advance: {project.advance}
-        </div>
-        <span className="text-sm text-teal-700 underline">View Details</span>
-      </div>
-    </div>
-  </Link>
-))}
-
+                    <div className="mt-auto flex justify-between items-center pt-4 border-t">
+                      <div className="text-teal-600 font-bold text-sm">
+                        Advance: {project.advance}
+                      </div>
+                      <span className="text-sm text-teal-700 underline">View Details</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
           )}
         </div>
@@ -164,12 +167,16 @@ function App() {
       <div className="pt-20">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<Login />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/post-property" element={<PostProperty />} />
           <Route path="/development-plots" element={<DevelopmentPlots />} />
           <Route path="/project/:id" element={<ProjectDetails />} />
           <Route path="/property/:id" element={<PropertyDetails properties={[]} />} />
+          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/edit-property/:id" element={<EditProperty />} />
+          <Route path="/interest-shown" element={<InterestShown />} />
+          <Route path="/interested-in-your-properties" element={<InterestedInYourProperties />} />
+          <Route path="/user-posted-properties" element={<UserPostedProperties />} />
         </Routes>
         <ChatWindow />
       </div>
@@ -178,5 +185,3 @@ function App() {
 }
 
 export default App;
-
-// <Route path="/profile" element={<UserProfile />} />

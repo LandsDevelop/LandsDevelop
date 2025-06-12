@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 interface Project {
-  id: number;
+  _id: string;
   title: string;
   location: string;
   totalArea: string;
@@ -12,7 +12,7 @@ interface Project {
   goodwill: string;
   advance: string;
   facing: string;
-  image: string;
+  imageUrl: string;
 }
 
 const DevelopmentPlots = () => {
@@ -52,11 +52,11 @@ const DevelopmentPlots = () => {
 
         <div className="mb-6 flex flex-wrap gap-3">
           {[
-            'Villa Project',
-            'High-rise Apartment',
-            'Mixed Development',
-            'Plotted Development',
-            'Standalone Building'
+            'villa',
+            'highrise',
+            'mixed',
+            'plotted',
+            'standalone'
           ].map(type => (
             <button
               key={type}
@@ -76,28 +76,30 @@ const DevelopmentPlots = () => {
           <p className="text-gray-600">No projects available.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- {filteredProjects.map(project => (
-  <Link
-    key={project.id}
-    to={`/project/${project.id}`}
-    className="block bg-white rounded-xl shadow p-4 hover:shadow-lg transition"
-  >
-    <img
-      src={project.image || 'https://via.placeholder.com/400x200?text=No+Image'}
-      alt={project.title}
-      className="w-full h-48 object-cover rounded mb-4"
-    />
-    <h3 className="text-xl font-bold mb-2">{project.title}</h3>
-    <p className="text-gray-700"><strong>Location:</strong> {project.location}</p>
-    <p><strong>Total Area:</strong> {project.totalArea}</p>
-    <p><strong>Development Type:</strong> {project.developmentType}</p>
-    <p><strong>Ratio:</strong> {project.developerRatio}</p>
-    <p><strong>Goodwill:</strong> {project.goodwill}</p>
-    <p><strong>Advance:</strong> {project.advance}</p>
-    <p><strong>Facing:</strong> {project.facing}</p>
-  </Link>
-))}
-
+            {filteredProjects.map(project => (
+              <Link
+                key={project._id}
+                to={`/project/${project._id}`}
+                className="block bg-white rounded-xl shadow p-4 hover:shadow-lg transition"
+              >
+                <img
+                  src={`http://localhost:5174${project.imageUrl}`}
+                  alt={project.title}
+                  className="w-full h-48 object-cover rounded mb-4"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://via.placeholder.com/400x200?text=No+Image';
+                  }}
+                />
+                <h3 className="text-xl font-bold mb-2">{project.title}</h3>
+                <p className="text-gray-700"><strong>Location:</strong> {project.location}</p>
+                <p><strong>Total Area:</strong> {project.totalArea}</p>
+                <p><strong>Development Type:</strong> {project.developmentType}</p>
+                <p><strong>Ratio:</strong> {project.developerRatio}</p>
+                <p><strong>Goodwill:</strong> {project.goodwill}</p>
+                <p><strong>Advance:</strong> {project.advance}</p>
+                <p><strong>Facing:</strong> {project.facing}</p>
+              </Link>
+            ))}
           </div>
         )}
       </div>

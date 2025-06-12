@@ -1,6 +1,8 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Bed, Bath, Square, MapPin, IndianRupee, ArrowLeft, Phone, Mail } from 'lucide-react';
+import {
+  Bed, Bath, Square, MapPin, IndianRupee, ArrowLeft, Phone, Mail,
+} from 'lucide-react';
 
 interface Property {
   id: number;
@@ -13,11 +15,12 @@ interface Property {
   area: string;
   image: string;
   bhk: number;
+  dealStatus?: string; // optional
 }
 
 const PropertyDetails: React.FC<{ properties: Property[] }> = ({ properties }) => {
   const { id } = useParams();
-  const property = properties.find(p => p.id === Number(id));
+  const property = properties.find((p) => p.id === Number(id));
 
   if (!property) {
     return (
@@ -46,8 +49,8 @@ const PropertyDetails: React.FC<{ properties: Property[] }> = ({ properties }) =
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Property Images */}
           <div className="relative h-[400px]">
-            <img 
-              src={`http://localhost:5174${property.image}`} 
+            <img
+              src={`http://localhost:5174${property.image}`}
               alt={property.title}
               className="w-full h-full object-cover"
             />
@@ -105,8 +108,8 @@ const PropertyDetails: React.FC<{ properties: Property[] }> = ({ properties }) =
             <div className="mb-8">
               <h2 className="text-2xl font-semibold mb-4">Description</h2>
               <p className="text-gray-600 leading-relaxed">
-                This beautiful {property.bhk} BHK property is located in the prime area of {property.location}. 
-                It offers modern amenities and spacious rooms with excellent ventilation. The property comes with 
+                This beautiful {property.bhk} BHK property is located in the prime area of {property.location}.
+                It offers modern amenities and spacious rooms with excellent ventilation. The property comes with
                 {property.baths} bathrooms and covers an area of {property.area}.
               </p>
             </div>
@@ -127,38 +130,45 @@ const PropertyDetails: React.FC<{ properties: Property[] }> = ({ properties }) =
             {/* Contact Section */}
             <div className="border-t pt-8">
               <h2 className="text-2xl font-semibold mb-4">Contact Owner</h2>
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <p className="flex items-center gap-2">
-                    <Phone className="h-5 w-5 text-teal-600" />
-                    +91 9014011885
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Mail className="h-5 w-5 text-teal-600" />
-                    ashok@landsdevelop.com
-                  </p>
+
+              {property.dealStatus === 'closed' ? (
+                <div className="text-red-600 font-semibold">
+                  Deal Closed – Contact details are no longer available.
                 </div>
-                <form className="space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Your Name"
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Your Phone"
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                  <textarea
-                    placeholder="Your Message"
-                    rows={4}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  ></textarea>
-                  <button className="w-full bg-teal-600 text-white py-2 rounded-lg hover:bg-teal-700 transition-colors">
-                    Send Message
-                  </button>
-                </form>
-              </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <p className="flex items-center gap-2">
+                      <Phone className="h-5 w-5 text-teal-600" />
+                      +91 9014011885
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Mail className="h-5 w-5 text-teal-600" />
+                      ashok@landsdevelop.com
+                    </p>
+                  </div>
+                  <form className="space-y-4">
+                    <input
+                      type="text"
+                      placeholder="Your Name"
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Your Phone"
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                    <textarea
+                      placeholder="Your Message"
+                      rows={4}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    ></textarea>
+                    <button className="w-full bg-teal-600 text-white py-2 rounded-lg hover:bg-teal-700 transition-colors">
+                      Send Message
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         </div>
