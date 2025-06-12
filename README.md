@@ -85,7 +85,6 @@ Make sure the backend has a writable `uploads/` directory (auto-created).
 
 ## ⚠️ Notes
 - Ensure MongoDB is running locally or Atlas connection string is correct.
-- Don't forget to add `.env` files manually as they are gitignored.
 - CORS is enabled for frontend <-> backend communication.
 
 ---
