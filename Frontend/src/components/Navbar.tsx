@@ -1,134 +1,86 @@
-// Navbar.tsx
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { User, LogOut, List } from 'lucide-react';
+// src/components/Navbar.tsx
+import React, { useState, useCallback } from "react";
+import { Link, NavLink } from "react-router-dom";
+import LoginModal from "./LoginModal"; // <-- adjust to "../components/LoginModal" if needed
 
 const Navbar: React.FC = () => {
-  const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [listingOpen, setListingOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const refreshAuth = () => {
-    const token = localStorage.getItem('token');
-    const name = localStorage.getItem('name');
-    setIsAuthenticated(!!token);
-    setUserName(name);
-  };
+  const openLogin = () => setShowLoginModal(true);
+  const closeLogin = () => setShowLoginModal(false);
 
-  useEffect(() => {
-    refreshAuth();
+  // If you have Redux/Context to refresh auth, do it here
+  const handleLoginSuccess = useCallback(() => {
+    // e.g., dispatch(fetchMe()) or window.location.reload()
+    setShowLoginModal(false);
   }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
-        setListingOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.clear();
-    setIsAuthenticated(false);
-    setUserName(null);
-    navigate('/');
-  };
 
   return (
-    <nav className="bg-white shadow fixed w-full z-50">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-teal-700">LandsDevelop</Link>
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => {
-              if (isAuthenticated) navigate('/post-property');
-              else setShowLoginModal(true);
-            }}
-            className="border-2 border-teal-600 text-teal-600 px-4 py-2 rounded-full font-semibold hover:bg-white hover:text-teal-600"
-          >
-            Post Property
-          </button>
+    <>
+      {/* Top Nav */}
+      <nav className="fixed inset-x-0 top-0 z-40 bg-white/90 backdrop-blur shadow">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          {/* Brand / Logo */}
+          <Link to="/" className="text-xl font-semibold tracking-tight">
+            LandsDevelop
+          </Link>
 
-          {isAuthenticated ? (
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="border-2 border-teal-600 bg-white text-teal-600 px-4 py-2 rounded-full font-semibold hover:bg-teal-50 flex items-center gap-2"
-              >
-                <User className="h-5 w-5" />
-                <span>{userName || 'Account'}</span>
-              </button>
+          {/* Desktop links (example) */}
+          <div className="hidden items-center gap-6 md:flex">
+            <NavLink
+              to="/"
+              className={({ isActive }) =>
+                `text-sm ${isActive ? "font-semibold text-black" : "text-gray-600 hover:text-black"}`
+              }
+            >
+              Home
+            </NavLink>
+            <NavLink
+              to="/properties"
+              className={({ isActive }) =>
+                `text-sm ${isActive ? "font-semibold text-black" : "text-gray-600 hover:text-black"}`
+              }
+            >
+              Properties
+            </NavLink>
+            <NavLink
+              to="/contact"
+              className={({ isActive }) =>
+                `text-sm ${isActive ? "font-semibold text-black" : "text-gray-600 hover:text-black"}`
+              }
+            >
+              About Us
+            </NavLink>
+          </div>
 
-              {showDropdown && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg z-50 py-2 border">
-                  <Link
-                    to="/profile"
-                    className="block px-4 py-2 text-gray-800 hover:bg-teal-50"
-                  >
-                    My Profile
-                  </Link>
+          {/* Right side actions */}
+          <div className="flex items-center gap-3">
+            <Link
+              to="/post-property"
+              className="rounded-full border border-gray-300 px-4 py-2 text-sm font-medium hover:border-gray-400"
+            >
+              Post Property
+            </Link>
 
-                  <div className="relative">
-                    <button
-                      onClick={() => setListingOpen(!listingOpen)}
-                      className="w-full text-left px-4 py-2 text-gray-800 hover:bg-teal-50 flex items-center gap-2"
-                    >
-                      <List className="h-4 w-4" />
-                      My Listings
-                    </button>
-
-                    {listingOpen && (
-                      <div className="mt-1 ml-6 space-y-1">
-                        <Link
-                          to="/user-posted-properties"
-                          className="block px-4 py-2 text-gray-700 hover:bg-teal-50"
-                        >
-                          Posted Properties
-                        </Link>
-                        <Link
-                          to="/interest-shown"
-                          className="block px-4 py-2 text-gray-700 hover:bg-teal-50"
-                        >
-                          Owners You Contacted
-                        </Link>
-                        <Link
-                          to="/interested-in-your-properties"
-                          className="block px-4 py-2 text-gray-700 hover:bg-teal-50"
-                        >
-                          Interested in Your Properties
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-100"
-                  >
-                    <LogOut className="h-4 w-4 inline mr-2" />
-                    Logout
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
             <button
-              onClick={() => setShowLoginModal(true)}
-              className="border-2 border-teal-600 bg-white text-teal-600 px-6 py-2 rounded-full font-semibold hover:bg-teal-50"
+              type="button"
+              onClick={openLogin}
+              className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Login
             </button>
-          )}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* Spacer so content isn't under the fixed navbar */}
+      <div className="h-16" />
+
+      {/* Login Modal (popup) */}
+      {showLoginModal && (
+        <LoginModal onClose={closeLogin} onLoginSuccess={handleLoginSuccess} />
+      )}
+    </>
   );
 };
 
