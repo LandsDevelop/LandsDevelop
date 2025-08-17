@@ -64,7 +64,7 @@ const EditProperty: React.FC = () => {
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        const res = await fetch(`http://localhost:5174/api/properties/${id}`);
+        const res = await fetch(`https://landsdevelop.onrender.com/api/properties/${id}`);
         const data = await res.json();
 
         if (!res.ok || !data?.project) {
@@ -405,7 +405,7 @@ const EditProperty: React.FC = () => {
     if (imageFile) data.append('image', imageFile);
 
     try {
-      const res = await fetch(`http://localhost:5174/api/properties/${id}`, {
+      const res = await fetch(`https://landsdevelop.onrender.com/api/properties/${id}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
         body: data,
@@ -724,7 +724,7 @@ const EditProperty: React.FC = () => {
       {formData.imageUrl ? (
         <div className="mb-2">
           <img
-            src={`http://localhost:5174${formData.imageUrl}`}
+            src={`https://landsdevelop.onrender.com${formData.imageUrl}`}
             alt="Current"
             className="w-full max-w-md rounded border"
             onError={e => {

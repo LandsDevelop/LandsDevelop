@@ -12,7 +12,7 @@ const InterestShown: React.FC = () => {
       if (!email) return;
 
       try {
-        const res = await fetch(`http://localhost:5174/api/interests/${email}`);
+        const res = await fetch(`https://landsdevelop.onrender.com/api/interests/${email}`);
         const data = await res.json();
         const extracted = data.map((entry: any) => entry.propertyId);
         setProperties(extracted);

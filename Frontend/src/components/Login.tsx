@@ -29,7 +29,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5174/api/send-otp', {
+      const res = await fetch('https://landsdevelop.onrender.com/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone })
@@ -57,7 +57,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5174/api/verify-otp', {
+      const res = await fetch('https://landsdevelop.onrender.com/api/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, otp })
@@ -103,7 +103,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5174/api/complete-signup', {
+      const res = await fetch('https://landsdevelop.onrender.com/api/complete-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

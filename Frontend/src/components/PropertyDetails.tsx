@@ -50,7 +50,7 @@ const PropertyDetails: React.FC<{ properties: Property[] }> = ({ properties }) =
           {/* Property Images */}
           <div className="relative h-[400px]">
             <img
-              src={`http://localhost:5174${property.image}`}
+              src={`https://landsdevelop.onrender.com${property.image}`}
               alt={property.title}
               className="w-full h-full object-cover"
             />

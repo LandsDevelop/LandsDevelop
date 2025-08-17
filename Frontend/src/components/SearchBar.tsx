@@ -245,7 +245,7 @@ const SearchBar: React.FC = () => {
     if (currentFilters.maxArea) params.append('maxArea', currentFilters.maxArea);
     if (currentFilters.ratio !== 'All') params.append('ratio', currentFilters.ratio);
 
-    const response = await fetch(`http://localhost:5174/api/search?${params.toString()}`);
+    const response = await fetch(`https://landsdevelop.onrender.com/api/search?${params.toString()}`);
     const data = await response.json();
 
     if (response.ok) {
@@ -533,7 +533,7 @@ const SearchBar: React.FC = () => {
                   {property.imageUrl && (
                     <div className="h-48 bg-gray-200 rounded-t-lg overflow-hidden">
                       <img
-                        src={`http://localhost:5174/${property.imageUrl}`}
+                        src={`https://landsdevelop.onrender.com/${property.imageUrl}`}
                         alt={property.projectName}
                         className="w-full h-full object-cover"
                         onError={(e) => {
