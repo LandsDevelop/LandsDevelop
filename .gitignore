@@ -44,3 +44,5 @@ coverage/
 *.local
 Frontend/node_modules
 Frontend/dist
+Frontend/node_modules
+Frontend/dist
