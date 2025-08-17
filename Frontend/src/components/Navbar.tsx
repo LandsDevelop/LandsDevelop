@@ -44,7 +44,7 @@ const Navbar: React.FC = () => {
               Properties
             </NavLink>
             <NavLink
-              to="/contact"
+              to="/about"
               className={({ isActive }) =>
                 `text-sm ${isActive ? "font-semibold text-black" : "text-gray-600 hover:text-black"}`
               }
