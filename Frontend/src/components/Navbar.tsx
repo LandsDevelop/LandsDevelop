@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, LogOut, List } from 'lucide-react';
-import LoginModal from './LoginModal';
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -46,13 +45,6 @@ const Navbar: React.FC = () => {
     <nav className="bg-white shadow fixed w-full z-50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
         <Link to="/" className="text-2xl font-bold text-teal-700">LandsDevelop</Link>
-
-        <div className="flex-1 flex justify-center space-x-6">
-          <Link to="/" className="text-teal-700 hover:text-teal-600">Home</Link>
-          <Link to="/about" className="text-teal-700 hover:text-teal-600">About Us</Link>
-          <Link to="/development-plots" className="text-teal-700 hover:text-teal-600">Development Plots</Link>
-        </div>
-
         <div className="flex items-center space-x-4">
           <button
             onClick={() => {
@@ -136,8 +128,6 @@ const Navbar: React.FC = () => {
           )}
         </div>
       </div>
-
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} onLoginSuccess={refreshAuth} />}
     </nav>
   );
 };

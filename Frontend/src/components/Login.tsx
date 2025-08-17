@@ -1,7 +1,7 @@
 // src/components/Login.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, ArrowRight, Lock, User } from 'lucide-react';
+import { Phone, ArrowRight, User, Mail, Check } from 'lucide-react';
 
 interface LoginProps {
   onSuccess: () => void;
@@ -9,40 +9,119 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onSuccess }) => {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
+  const [step, setStep] = useState<'phone' | 'otp' | 'details'>('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [mobile, setMobile] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const sendOTP = async () => {
+    if (!phone || phone.length < 10) {
+      setError('Please enter a valid phone number');
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
     try {
-      const url = isLogin
-        ? 'http://localhost:5174/api/login'
-        : 'http://localhost:5174/api/signup';
-      const body = isLogin
-        ? { email, password }
-        : { email, password, name, mobile };
-
-      const res = await fetch(url, {
+      const res = await fetch('http://localhost:5174/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ phone })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Something went wrong');
+      if (!res.ok) throw new Error(data.message || 'Failed to send OTP');
 
-      // Safely handle login or signup
-      if (data.token) localStorage.setItem('token', data.token);
-      if (data.user?.email) localStorage.setItem('email', data.user.email);
-      if (data.user?.name) localStorage.setItem('name', data.user.name);
+      setOtpSent(true);
+      setStep('otp');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOTP = async () => {
+    if (!otp || otp.length !== 6) {
+      setError('Please enter valid 6-digit OTP');
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch('http://localhost:5174/api/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Invalid OTP');
+
+      // Check if user exists
+      if (data.userExists) {
+        // Existing user - direct login
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('phone', phone);
+        localStorage.setItem('name', data.user.firstName + ' ' + data.user.lastName);
+        if (data.user.email) localStorage.setItem('email', data.user.email);
+
+        // Redirect logic
+        if (localStorage.getItem('redirectToPost')) {
+          localStorage.removeItem('redirectToPost');
+          navigate('/post-property');
+        } else {
+          navigate('/');
+        }
+        onSuccess();
+      } else {
+        // New user - collect details
+        setStep('details');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'OTP verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completeSignup = async () => {
+    if (!firstName.trim()) {
+      setError('First name is required');
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch('http://localhost:5174/api/complete-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          phone, 
+          firstName: firstName.trim(), 
+          lastName: lastName.trim(), 
+          email: email.trim() || null 
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to complete signup');
+
+      // Store user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('phone', phone);
+      localStorage.setItem('name', firstName + ' ' + lastName);
+      if (email) localStorage.setItem('email', email);
 
       // Redirect logic
       if (localStorage.getItem('redirectToPost')) {
@@ -51,92 +130,154 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       } else {
         navigate('/');
       }
-
-      onSuccess(); // ✅ Close modal
+      onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      setError(err instanceof Error ? err.message : 'Signup failed');
     } finally {
       setLoading(false);
     }
   };
 
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, '');
+    // Limit to 10 digits
+    return digits.slice(0, 10);
+  };
+
   return (
     <div className="w-full bg-white p-8 rounded-xl shadow-lg space-y-6">
-      <h2 className="text-center text-3xl font-bold text-gray-900">
-        {isLogin ? 'Sign In' : 'Sign Up'}
-      </h2>
-      <p className="text-center text-sm text-gray-600">
-        {isLogin ? "Don't have an account?" : "Already have an account?"}
-        <button
-          className="text-teal-600 ml-1 font-semibold hover:underline"
-          onClick={() => setIsLogin(!isLogin)}
-        >
-          {isLogin ? 'Sign up' : 'Sign in'}
-        </button>
-      </p>
+      {/* Header */}
+      <div className="text-center">
+        <h2 className="text-3xl font-bold text-gray-900">
+          {step === 'phone' && 'Welcome'}
+          {step === 'otp' && 'Verify OTP'}
+          {step === 'details' && 'Complete Profile'}
+        </h2>
+        <p className="text-sm text-gray-600 mt-2">
+          {step === 'phone' && 'Enter your phone number to continue'}
+          {step === 'otp' && `OTP sent to +91 ${phone}`}
+          {step === 'details' && 'Tell us a bit about yourself'}
+        </p>
+      </div>
 
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        {!isLogin && (
-          <>
+      {/* Phone Number Step */}
+      {step === 'phone' && (
+        <div className="space-y-4">
+          <div className="relative">
+            <Phone className="absolute left-3 top-3 text-gray-400" size={20} />
+            <div className="flex">
+              <span className="inline-flex items-center px-3 py-2 border border-r-0 border-gray-300 bg-gray-50 text-gray-600 text-sm rounded-l-lg">
+                +91
+              </span>
+              <input
+                type="tel"
+                placeholder="Phone Number"
+                className="pl-3 w-full py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                value={phone}
+                onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
+                maxLength={10}
+              />
+            </div>
+          </div>
+
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          <button
+            onClick={sendOTP}
+            disabled={loading || phone.length !== 10}
+            className="bg-teal-600 text-white w-full py-3 rounded-lg hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+          >
+            {loading ? 'Sending OTP...' : 'Send OTP'}
+          </button>
+        </div>
+      )}
+
+      {/* OTP Verification Step */}
+      {step === 'otp' && (
+        <div className="space-y-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Enter 6-digit OTP"
+              className="w-full py-3 px-4 border border-gray-300 rounded-lg text-center text-lg font-mono tracking-widest focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              maxLength={6}
+            />
+          </div>
+
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          <button
+            onClick={verifyOTP}
+            disabled={loading || otp.length !== 6}
+            className="bg-teal-600 text-white w-full py-3 rounded-lg hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+          >
+            {loading ? 'Verifying...' : 'Verify OTP'}
+          </button>
+
+          <button
+            onClick={() => {
+              setStep('phone');
+              setOtp('');
+              setError(null);
+            }}
+            className="text-teal-600 w-full py-2 text-sm hover:underline"
+          >
+            Change Phone Number
+          </button>
+        </div>
+      )}
+
+      {/* User Details Step */}
+      {step === 'details' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="relative">
-              <User className="absolute left-3 top-3 text-gray-400" />
+              <User className="absolute left-3 top-3 text-gray-400" size={20} />
               <input
                 type="text"
-                placeholder="Full Name"
-                className="pl-10 w-full py-2 border rounded-lg"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
+                placeholder="First Name *"
+                className="pl-10 w-full py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
               />
             </div>
             <div className="relative">
-              <ArrowRight className="absolute left-3 top-3 text-gray-400" />
+              <User className="absolute left-3 top-3 text-gray-400" size={20} />
               <input
                 type="text"
-                placeholder="Mobile"
-                className="pl-10 w-full py-2 border rounded-lg"
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
-                required
+                placeholder="Last Name"
+                className="pl-10 w-full py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
               />
             </div>
-          </>
-        )}
+          </div>
 
-        <div className="relative">
-          <Mail className="absolute left-3 top-3 text-gray-400" />
-          <input
-            type="email"
-            placeholder="Email"
-            className="pl-10 w-full py-2 border rounded-lg"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+          <div className="relative">
+            <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
+            <input
+              type="email"
+              placeholder="Email (Optional)"
+              className="pl-10 w-full py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          <button
+            onClick={completeSignup}
+            disabled={loading || !firstName.trim()}
+            className="bg-teal-600 text-white w-full py-3 rounded-lg hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+          >
+            {loading ? 'Creating Account...' : 'Complete Signup'}
+          </button>
         </div>
-
-        <div className="relative">
-          <Lock className="absolute left-3 top-3 text-gray-400" />
-          <input
-            type="password"
-            placeholder="Password"
-            className="pl-10 w-full py-2 border rounded-lg"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-teal-600 text-white w-full py-2 rounded-lg hover:bg-teal-700"
-        >
-          {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Sign Up'}
-        </button>
-      </form>
+      )}
     </div>
   );
 };
