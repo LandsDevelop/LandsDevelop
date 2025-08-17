@@ -11,7 +11,7 @@ import InterestShown from './components/InterestShown';
 import InterestedInYourProperties from './components/InterestedInYourProperties';
 import UserPostedProperties from './components/UserPostedProperties';
 import SearchBar from './components/SearchBar';
-import SearchResults from './components/SearchPage'; 
+import Footer from './components/footer';
 import SearchPage from './components/SearchPage';
 
 function HomePage() {
@@ -45,6 +45,7 @@ function App() {
           <Route path="/user-posted-properties" element={<UserPostedProperties />} />
         </Routes>
       </div>
+      <Footer />
     </div>
   );
 }
