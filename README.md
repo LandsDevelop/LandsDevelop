@@ -27,7 +27,7 @@ FINDINGLAND/
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/FINDINGLAND.git
+git clone https://github.com/LandsDevelop/LandsDevelop.git
 cd FINDINGLAND
 ```
 
