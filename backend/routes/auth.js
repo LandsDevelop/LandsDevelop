@@ -69,14 +69,12 @@ const sendOTPViaAirtel = async (phone, otp) => {
 router.post('/send-otp', async (req, res) => {
   try {
     const { phone } = req.body;
-
     if (!phone || !/^\d{10}$/.test(phone)) {
       return res.status(400).json({ message: 'Invalid phone number. Please enter 10 digits.' });
     }
 
-    const otp = generateOTP();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Store/refresh OTP doc (5 min)
     await OTP.deleteMany({ phone });
     await new OTP({
       phone,
@@ -84,31 +82,21 @@ router.post('/send-otp', async (req, res) => {
       expiresAt: new Date(Date.now() + 5 * 60 * 1000)
     }).save();
 
-    try {
-      const airtel = await sendOTPViaAirtel(phone, otp);
-      return res.json({
-        success: true,
-        message: 'OTP API called',
-        // In dev, surface debug to help you test without balance
-        ...(process.env.NODE_ENV === 'development' && { debug: { otp, airtel } })
-      });
-    } catch (err) {
-      console.error('Airtel OTP error:', err?.response?.data || err.message);
-      if (process.env.NODE_ENV === 'development') {
-        // Let you continue testing end-to-end in dev
-        return res.json({
-          success: true,
-            message: 'OTP generated (SMS not sent in dev or balance issue)',
-          debug: { otp, error: err?.response?.data || err.message }
-        });
-      }
-      return res.status(500).json({ message: 'Failed to send OTP. Please try again.' });
-    }
+    // ✅ Always log OTP in terminal for now (mock mode)
+    console.log(`🔐 OTP for ${phone} is: ${otp}`);
+
+    return res.json({
+      success: true,
+      message: 'OTP generated successfully (check console)',
+      otp // optional for debug; can remove in prod
+    });
+
   } catch (err) {
     console.error('Send OTP error:', err);
     res.status(500).json({ message: 'Internal server error during OTP send' });
   }
 });
+
 
 // Verify OTP
 router.post('/verify-otp', async (req, res) => {

@@ -20,11 +20,11 @@ const UserPostedProperties: React.FC = () => {
       }
 
       // Try the new phone-based endpoint first
-      let res = await fetch(`https://landsdevelop.onrender.com/api/user-properties-by-phone/${phone}`);
+      let res = await fetch(`http://localhost:5174/api/user-properties-by-phone/${phone}`);
       
       if (!res.ok) {
         // Fallback to the old method if the new endpoint doesn't exist yet
-        res = await fetch('https://landsdevelop.onrender.com/api/all');
+        res = await fetch('http://localhost:5174/api/all');
         const all = await res.json();
         const filtered = all.filter((p: any) => p.phone === phone || p.contactPhone === phone);
         setUserProperties(filtered);
@@ -50,7 +50,7 @@ const UserPostedProperties: React.FC = () => {
     }
 
     try {
-      const res = await fetch(`https://landsdevelop.onrender.com/api/properties/${id}/close`, {
+      const res = await fetch(`http://localhost:5174/api/properties/${id}/close`, {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -86,7 +86,7 @@ const UserPostedProperties: React.FC = () => {
     }
 
     try {
-      const res = await fetch(`https://landsdevelop.onrender.com/api/properties/${id}`, {
+      const res = await fetch(`http://localhost:5174/api/properties/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -187,7 +187,7 @@ const UserPostedProperties: React.FC = () => {
                 >
                   <div className="relative h-48">
                     <img
-                      src={project.imageUrl ? `https://landsdevelop.onrender.com${project.imageUrl}` : 'https://via.placeholder.com/400x200?text=No+Image'}
+                      src={project.imageUrl ? `http://localhost:5174${project.imageUrl}` : 'https://via.placeholder.com/400x200?text=No+Image'}
                       alt={project.projectName || project.title || 'Property'}
                       className="w-full h-full object-cover"
                       onError={(e) => {

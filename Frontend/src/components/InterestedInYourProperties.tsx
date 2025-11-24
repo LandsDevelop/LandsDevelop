@@ -9,7 +9,7 @@ const InterestedInYourProperties = () => {
       const ownerEmail = localStorage.getItem('email');
       if (!ownerEmail) return;
 
-      const res = await fetch(`https://landsdevelop.onrender.com/api/interests-owned-by-you/${ownerEmail}`);
+      const res = await fetch(`http://localhost:5174/api/interests-owned-by-you/${ownerEmail}`);
       const data = await res.json();
       setRecords(data);
     };

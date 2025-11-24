@@ -332,7 +332,7 @@ const PostProperty = () => {
     data.set('coordinates', JSON.stringify(formData.coordinates));
 
     try {
-      const res = await fetch('https://landsdevelop.onrender.com/api/add', {
+      const res = await fetch('http://localhost:5174/api/add', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: data

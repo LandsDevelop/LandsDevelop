@@ -1,36 +1,83 @@
-// src/components/Navbar.tsx
-import React, { useState, useCallback } from "react";
-import { Link, NavLink } from "react-router-dom";
-import LoginModal from "./LoginModal"; // <-- adjust to "../components/LoginModal" if needed
+import React, { useState, useCallback, useEffect } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import LoginModal from "./LoginModal";
 
 const Navbar: React.FC = () => {
+  const navigate = useNavigate();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // ✅ Load login state initially and whenever storage changes
+  const loadAuthData = useCallback(() => {
+    const token = localStorage.getItem("token");
+    const name = localStorage.getItem("name");
+    setIsLoggedIn(!!token);
+    setUserName(name || "");
+  }, []);
+
+  useEffect(() => {
+    loadAuthData();
+
+    // ✅ Listen for login/logout from other components
+    const handleStorageChange = () => loadAuthData();
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [loadAuthData]);
 
   const openLogin = () => setShowLoginModal(true);
   const closeLogin = () => setShowLoginModal(false);
 
-  // If you have Redux/Context to refresh auth, do it here
+  // ✅ Called after successful login/signup
   const handleLoginSuccess = useCallback(() => {
-    // e.g., dispatch(fetchMe()) or window.location.reload()
+    loadAuthData();
     setShowLoginModal(false);
-  }, []);
+    navigate("/");
+  }, [loadAuthData, navigate]);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    setIsLoggedIn(false);
+    setShowDropdown(false);
+    navigate("/");
+  };
+
+  const toggleDropdown = () => setShowDropdown((prev) => !prev);
+  const goToProfile = () => {
+    setShowDropdown(false);
+    navigate("/profile");
+  };
+  const goToListings = () => {
+    setShowDropdown(false);
+    navigate("/user-properties");
+  };
 
   return (
     <>
-      {/* Top Nav */}
-      <nav className="fixed inset-x-0 top-0 z-40 bg-white/90 backdrop-blur shadow">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* Brand / Logo */}
-          <Link to="/" className="text-xl font-semibold tracking-tight">
-            LandsDevelop
-          </Link>
+      <nav className="fixed inset-x-0 top-0 z-50 bg-white/60 backdrop-blur-lg shadow-sm border-b border-gray-200">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-0">
+          {/* --- Left: Logo --- */}
+          <div className="flex-1 flex justify-start">
+            <Link to="/" className="flex items-center">
+              <img
+                src="https://i.ibb.co/wFzc65dP/lands-develop-official-logo.png"
+                alt="LandsDevelop Logo"
+                className="h-16 w-auto object-contain ml-4"
+              />
+            </Link>
+          </div>
 
-          {/* Desktop links (example) */}
-          <div className="hidden items-center gap-6 md:flex">
+          {/* --- Center: Navigation Links --- */}
+          <div className="flex-1 hidden md:flex items-center justify-center gap-12 text-lg font-medium">
             <NavLink
               to="/"
               className={({ isActive }) =>
-                `text-sm ${isActive ? "font-semibold text-black" : "text-gray-600 hover:text-black"}`
+                `transition ${
+                  isActive
+                    ? "text-teal-700 font-semibold"
+                    : "text-gray-700 hover:text-teal-700"
+                }`
               }
             >
               Home
@@ -38,7 +85,11 @@ const Navbar: React.FC = () => {
             <NavLink
               to="/properties"
               className={({ isActive }) =>
-                `text-sm ${isActive ? "font-semibold text-black" : "text-gray-600 hover:text-black"}`
+                `transition ${
+                  isActive
+                    ? "text-teal-700 font-semibold"
+                    : "text-gray-700 hover:text-teal-700"
+                }`
               }
             >
               Properties
@@ -46,37 +97,85 @@ const Navbar: React.FC = () => {
             <NavLink
               to="/about"
               className={({ isActive }) =>
-                `text-sm ${isActive ? "font-semibold text-black" : "text-gray-600 hover:text-black"}`
+                `transition ${
+                  isActive
+                    ? "text-teal-700 font-semibold"
+                    : "text-gray-700 hover:text-teal-700"
+                }`
               }
             >
-              About Us
+              About
             </NavLink>
           </div>
 
-          {/* Right side actions */}
-          <div className="flex items-center gap-3">
-            <Link
-              to="/post-property"
-              className="rounded-full border border-gray-300 px-4 py-2 text-sm font-medium hover:border-gray-400"
-            >
-              Post Property
-            </Link>
+          {/* --- Right: Buttons --- */}
+<div className="flex-1 flex justify-end items-center gap-5 pr-4">
+  <button
+    onClick={() => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        // user not logged in → show login popup
+        localStorage.setItem("redirectToPost", "true");
+        setShowLoginModal(true);
+      } else {
+        // logged in → navigate directly
+        navigate("/post-property");
+      }
+    }}
+    className="rounded-full border-2 border-teal-600 text-teal-700 px-6 py-2.5 text-base font-medium hover:bg-teal-600 hover:text-white transition"
+  >
+    Post Property
+  </button>
 
-            <button
-              type="button"
-              onClick={openLogin}
-              className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-            >
-              Login
-            </button>
-          </div>
+  {!isLoggedIn ? (
+    <button
+      type="button"
+      onClick={openLogin}
+      className="rounded-full bg-teal-600 px-6 py-2.5 text-base font-semibold text-white hover:bg-teal-700 transition"
+    >
+      Login
+    </button>
+  ) : (
+    <div className="relative">
+      <button
+        onClick={toggleDropdown}
+        className="rounded-full bg-teal-600 px-6 py-2.5 text-base font-semibold text-white hover:bg-teal-700 transition"
+      >
+        Hi, {userName.split(" ")[0]}
+      </button>
+
+      {showDropdown && (
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2">
+          <button
+            onClick={goToProfile}
+            className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+          >
+            My Profile
+          </button>
+          <button
+            onClick={goToListings}
+            className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+          >
+            My Listings
+          </button>
+          <button
+            onClick={handleLogout}
+            className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+          >
+            Logout
+          </button>
+        </div>
+      )}
+    </div>
+  )}
+</div>
+
         </div>
       </nav>
 
-      {/* Spacer so content isn't under the fixed navbar */}
-      <div className="h-16" />
+      <div className="h-20" />
 
-      {/* Login Modal (popup) */}
+      {/* --- Login Modal --- */}
       {showLoginModal && (
         <LoginModal onClose={closeLogin} onLoginSuccess={handleLoginSuccess} />
       )}

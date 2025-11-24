@@ -23,7 +23,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
     <div className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
       <div className="relative">
         <img 
-          src={`https://landsdevelop.onrender.com${property.imageUrl}`} 
+          src={`http://localhost:5174${property.imageUrl}`} 
           alt={property.title}
           className="w-full h-48 object-cover"
           onError={(e) => {

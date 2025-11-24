@@ -16,7 +16,7 @@ const UserProfile: React.FC = () => {
 
     // Redirect if not authenticated
     if (!token) {
-      navigate('/login');
+      navigate('/');
       return;
     }
 
