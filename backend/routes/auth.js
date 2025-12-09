@@ -11,40 +11,34 @@ const OTP = require('../models/OTP');
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
-// Build the exact message text that matches your DLT-approved template.
-// Keep the approved text EXACT; only {{otp}} is substituted.
 const buildOtpMessage = (otp) => {
-  // If you have the exact approved text, put it here:
-  // e.g., "Your OTP for LandsDevelop login is {{otp}}. It is valid for 5 minutes. Do not share."
   const template = process.env.AIRTEL_TEMPLATE_TEXT || 'Your OTP is {{otp}}';
   return template.replace('{{otp}}', otp);
 };
 
-// ====== Airtel Sender (prepaid endpoint + Basic auth) ======
+// ====== Airtel Sender ======
 const sendOTPViaAirtel = async (phone, otp) => {
-  // Dev-mode short-circuit so you can test without balance
   if (process.env.NODE_ENV === 'development' && process.env.MOCK_OTP === 'true') {
     const mock = { mock: true, note: 'Skipped Airtel send in dev (no balance)' };
     console.log(`MOCK OTP -> ${otp} to ${phone}`, mock);
     return mock;
   }
 
-  const endpoint = process.env.AIRTEL_ENDPOINT; // e.g., https://iqsms.airtel.in/api/v1/send-prepaid-sms
+  const endpoint = process.env.AIRTEL_ENDPOINT;
   if (!endpoint) throw new Error('AIRTEL_ENDPOINT not set');
 
-  // Basic <base64(username:password)>
   const basic = Buffer
     .from(`${process.env.AIRTEL_USERNAME}:${process.env.AIRTEL_PASSWORD}`)
     .toString('base64');
 
   const payload = {
-    customerId: process.env.AIRTEL_CUSTOMER_ID,         // GUID from Technical Settings
-    destinationAddress: [`91${phone}`],                 // 91XXXXXXXXXX
-    dltTemplateId: process.env.AIRTEL_TEMPLATE_ID,      // your approved DLT template id
-    entityId: process.env.AIRTEL_ENTITY_ID,             // AIR0...
-    message: buildOtpMessage(otp),                      // must match DLT text ({{otp}} replaced)
+    customerId: process.env.AIRTEL_CUSTOMER_ID,
+    destinationAddress: [`91${phone}`],
+    dltTemplateId: process.env.AIRTEL_TEMPLATE_ID,
+    entityId: process.env.AIRTEL_ENTITY_ID,
+    message: buildOtpMessage(otp),
     messageType: 'TEXT',
-    sourceAddress: process.env.AIRTEL_HEADER_ID         // your header/sender (e.g., INVHST)
+    sourceAddress: process.env.AIRTEL_HEADER_ID
   };
 
   const headers = {
@@ -53,10 +47,8 @@ const sendOTPViaAirtel = async (phone, otp) => {
   };
 
   const resp = await axios.post(endpoint, payload, { headers, timeout: 15000 });
-  // Surface the full body for log visibility
   console.log('Airtel response:', resp.status, JSON.stringify(resp.data));
 
-  // Accept any 2xx as success; Airtel may have its own codes in body
   if (resp.status < 200 || resp.status >= 300) {
     throw new Error(`Airtel returned non-2xx: ${resp.status}`);
   }
@@ -82,7 +74,6 @@ router.post('/send-otp', async (req, res) => {
       expiresAt: new Date(Date.now() + 5 * 60 * 1000)
     }).save();
 
-    // ✅ Always log OTP in terminal for now (mock mode)
     console.log(`🔐 OTP for ${phone} is: ${otp}`);
 
     return res.json({
@@ -96,7 +87,6 @@ router.post('/send-otp', async (req, res) => {
     res.status(500).json({ message: 'Internal server error during OTP send' });
   }
 });
-
 
 // Verify OTP
 router.post('/verify-otp', async (req, res) => {
@@ -124,8 +114,12 @@ router.post('/verify-otp', async (req, res) => {
     const existingUser = await User.findOne({ phone });
 
     if (existingUser) {
+      // ✅ Include phone in JWT token
       const token = jwt.sign(
-        { id: existingUser._id },
+        { 
+          id: existingUser._id,
+          phone: existingUser.phone  // Add phone to token
+        },
         process.env.JWT_SECRET || 'secret',
         { expiresIn: '7d' }
       );
@@ -191,8 +185,12 @@ router.post('/complete-signup', async (req, res) => {
     await newUser.save();
     await OTP.deleteMany({ phone });
 
+    // ✅ Include phone in JWT token
     const token = jwt.sign(
-      { id: newUser._id },
+      { 
+        id: newUser._id,
+        phone: newUser.phone  // Add phone to token
+      },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '7d' }
     );

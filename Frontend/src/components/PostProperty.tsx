@@ -13,7 +13,6 @@ const PostProperty = () => {
     developmentType: '',
     totalArea: '',
     areaUnit: 'Sq Yards',
-    // Plot dimensions for all sides
     northSideLength: '',
     southSideLength: '',
     eastSideLength: '',
@@ -21,13 +20,11 @@ const PostProperty = () => {
     facing: '',
     roadSize: '',
     developerRatio: '',
-    // Location fields
     city: 'Hyderabad',
     locality: '',
     landmark: '',
-    coordinates: { lat: 17.385044, lng: 78.486671 }, // Default to Hyderabad
+    coordinates: { lat: 17.385044, lng: 78.486671 },
     mapLink: '',
-    // Pricing
     goodwill: '',
     advance: '',
     description: '',
@@ -37,18 +34,18 @@ const PostProperty = () => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [useMapLink, setUseMapLink] = useState(false);
   const [mapLinkInput, setMapLinkInput] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const localityAutocompleteRef = useRef<any>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const localityInputRef = useRef<HTMLInputElement>(null);
   const mapLinkInputRef = useRef<HTMLInputElement>(null);
 
-  // Available cities (for now only Hyderabad)
   const cities = [
     { value: 'Hyderabad', label: 'Hyderabad' }
   ];
 
-  // Load Google Maps API
   useEffect(() => {
     if (!window.google) {
       const script = document.createElement('script');
@@ -87,16 +84,16 @@ const PostProperty = () => {
           zoom: 12,
           mapTypeControl: false,
           streetViewControl: false,
-          draggable: false, // Disable map dragging
+          draggable: false,
           zoomControl: true,
-          scrollwheel: false, // Disable zoom with scroll
-          disableDoubleClickZoom: true, // Disable double-click zoom
+          scrollwheel: false,
+          disableDoubleClickZoom: true,
         });
 
         markerRef.current = new window.google.maps.Marker({
           position: formData.coordinates,
           map: mapRef.current,
-          draggable: false, // Disable marker dragging
+          draggable: false,
           title: 'Property Location'
         });
 
@@ -119,8 +116,8 @@ const PostProperty = () => {
             componentRestrictions: { country: 'IN' },
             fields: ['formatted_address', 'geometry', 'address_components', 'name'],
             bounds: new window.google.maps.LatLngBounds(
-              new window.google.maps.LatLng(17.2, 78.2), // SW bounds of Hyderabad
-              new window.google.maps.LatLng(17.6, 78.8)  // NE bounds of Hyderabad
+              new window.google.maps.LatLng(17.2, 78.2),
+              new window.google.maps.LatLng(17.6, 78.8)
             ),
             strictBounds: true
           }
@@ -144,10 +141,8 @@ const PostProperty = () => {
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
         
-        // Extract locality name from place
         let localityName = place.name || '';
         
-        // Try to get more specific locality from address components
         place.address_components?.forEach((component: any) => {
           if (component.types.includes('sublocality_level_1') || 
               component.types.includes('sublocality') ||
@@ -163,7 +158,6 @@ const PostProperty = () => {
           mapLink: `https://maps.google.com/?q=${lat},${lng}`
         }));
 
-        // Update map and marker
         moveMapToLocation(lat, lng);
       }
     } catch (error) {
@@ -187,14 +181,12 @@ const PostProperty = () => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           
-          // Reverse geocode to get locality name
           if (window.google) {
             const geocoder = new window.google.maps.Geocoder();
             geocoder.geocode({ location: { lat, lng } }, (results: any, status: string) => {
               if (status === 'OK' && results[0]) {
                 let localityName = '';
                 
-                // Extract locality from address components
                 results[0].address_components.forEach((component: any) => {
                   if (component.types.includes('sublocality_level_1') || 
                       component.types.includes('sublocality') ||
@@ -226,14 +218,13 @@ const PostProperty = () => {
   };
 
   const extractCoordinatesFromMapLink = (link: string) => {
-    // Handle various Google Maps link formats
     const patterns = [
       /maps\.google\.com.*?@(-?\d+\.?\d*),(-?\d+\.?\d*)/,
       /maps\.google\.com.*?q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
       /maps\.google\.com.*?ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
       /maps\.google\.com.*?center=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
       /goo\.gl\/maps\/.*?@(-?\d+\.?\d*),(-?\d+\.?\d*)/,
-      /(-?\d+\.?\d*),(-?\d+\.?\d*)/  // Direct coordinates
+      /(-?\d+\.?\d*),(-?\d+\.?\d*)/
     ];
     
     for (const pattern of patterns) {
@@ -256,7 +247,6 @@ const PostProperty = () => {
     if (link.trim()) {
       const coords = extractCoordinatesFromMapLink(link);
       if (coords) {
-        // Reverse geocode to get locality
         if (window.google) {
           const geocoder = new window.google.maps.Geocoder();
           geocoder.geocode({ location: coords }, (results: any, status: string) => {
@@ -289,12 +279,9 @@ const PostProperty = () => {
   const toggleMapLinkMode = () => {
     setUseMapLink(!useMapLink);
     if (!useMapLink) {
-      // Switching to map link mode
       setFormData(prev => ({ ...prev, locality: '' }));
     } else {
-      // Switching to manual mode
       setMapLinkInput('');
-      // Reinitialize autocomplete
       setTimeout(() => {
         initializeLocalityAutocomplete();
       }, 100);
@@ -315,35 +302,98 @@ const PostProperty = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     const token = localStorage.getItem('token');
-    if (!token) return alert('You must be logged in');
+    if (!token) {
+      alert('You must be logged in');
+      setIsSubmitting(false);
+      return;
+    }
 
     const data = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      if (key === 'coordinates') return;
-      if (value) data.append(key, value as string | Blob);
-    });
-
-    // Add location data
-    data.set('city', formData.city);
-    data.set('locality', formData.locality);
-    data.set('landmark', formData.landmark);
-    data.set('map', formData.mapLink);
-    data.set('coordinates', JSON.stringify(formData.coordinates));
+    
+    // Add all text fields
+    data.append('projectName', formData.projectName);
+    data.append('developmentType', formData.developmentType);
+    data.append('totalArea', formData.totalArea);
+    data.append('areaUnit', formData.areaUnit);
+    data.append('northSideLength', formData.northSideLength);
+    data.append('southSideLength', formData.southSideLength);
+    data.append('eastSideLength', formData.eastSideLength);
+    data.append('westSideLength', formData.westSideLength);
+    data.append('facing', formData.facing);
+    data.append('roadSize', formData.roadSize);
+    data.append('developerRatio', formData.developerRatio);
+    data.append('city', formData.city);
+    data.append('locality', formData.locality);
+    data.append('landmark', formData.landmark);
+    data.append('map', formData.mapLink);
+    data.append('coordinates', JSON.stringify(formData.coordinates));
+    data.append('goodwill', formData.goodwill);
+    data.append('advance', formData.advance);
+    data.append('description', formData.description);
+    data.append('selectedAmenities', JSON.stringify([]));
+    
+    // Add image if present
+    if (formData.image) {
+      data.append('image', formData.image);
+    }
 
     try {
       const res = await fetch('http://localhost:5174/api/add', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          'Authorization': `Bearer ${token}`
+        },
         body: data
       });
 
-      const text = await res.text();
-      const json = JSON.parse(text);
-      if (!res.ok) throw new Error(json.error);
-      alert('Property Posted!');
+      const responseText = await res.text();
+      console.log('Response:', responseText);
+      
+      let json;
+      try {
+        json = JSON.parse(responseText);
+      } catch (parseError) {
+        throw new Error(`Invalid response from server: ${responseText}`);
+      }
+      
+      if (!res.ok) {
+        throw new Error(json.error || json.details || 'Failed to post property');
+      }
+      
+      alert('Property Posted Successfully!');
+      
+      // Reset form
+      setFormData({
+        projectName: '',
+        developmentType: '',
+        totalArea: '',
+        areaUnit: 'Sq Yards',
+        northSideLength: '',
+        southSideLength: '',
+        eastSideLength: '',
+        westSideLength: '',
+        facing: '',
+        roadSize: '',
+        developerRatio: '',
+        city: 'Hyderabad',
+        locality: '',
+        landmark: '',
+        coordinates: { lat: 17.385044, lng: 78.486671 },
+        mapLink: '',
+        goodwill: '',
+        advance: '',
+        description: '',
+        image: null,
+      });
+      
     } catch (err: any) {
+      console.error('Submit error:', err);
       alert(`Error: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -404,7 +454,6 @@ const PostProperty = () => {
         </select>
       </div>
 
-      {/* Plot Dimensions - Only show for Sq Yards and Sq Ft */}
       {showDimensions && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-teal-600">Plot Dimensions (in feet)</h3>
@@ -449,9 +498,6 @@ const PostProperty = () => {
               min="0"
               step="any"
             />
-          </div>
-          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-            <p><strong>Note:</strong> Enter the length of each side of your plot in feet. This helps provide accurate measurements for irregular plots that aren't perfect rectangles.</p>
           </div>
         </div>
       )}
@@ -502,9 +548,7 @@ const PostProperty = () => {
 
       <h2 className="text-2xl font-bold text-teal-700 mt-6">Location Details</h2>
       
-      {/* Location Form */}
       <div className="space-y-4">
-        {/* City Row */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
           <select 
@@ -520,7 +564,6 @@ const PostProperty = () => {
           </select>
         </div>
 
-        {/* Map Link Mode Toggle */}
         <div className="flex items-center gap-2 p-3 bg-gray-50 rounded">
           <input
             type="checkbox"
@@ -530,15 +573,14 @@ const PostProperty = () => {
             className="w-4 h-4 text-teal-600"
           />
           <label htmlFor="useMapLink" className="text-sm text-gray-700">
-            Use Google Maps link instead (paste your Google Maps link here)
+            Use Google Maps link instead
           </label>
         </div>
 
-        {/* Locality Input or Map Link Input */}
         {useMapLink ? (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              🔗 Paste Google Maps Link *
+              Paste Google Maps Link *
             </label>
             <input
               ref={mapLinkInputRef}
@@ -550,9 +592,6 @@ const PostProperty = () => {
               disabled={!isMapLoaded}
               required
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Paste any Google Maps link and we'll extract the location automatically
-            </p>
           </div>
         ) : (
           <div>
@@ -563,7 +602,7 @@ const PostProperty = () => {
                 onClick={handleUseCurrentLocation}
                 className="ml-2 text-xs text-teal-600 hover:text-teal-800 bg-teal-50 px-2 py-1 rounded"
               >
-                📍 Use Current Location
+                Use Current Location
               </button>
             </label>
             <input 
@@ -571,66 +610,44 @@ const PostProperty = () => {
               name="locality" 
               value={formData.locality} 
               onChange={handleChange} 
-              placeholder="Enter location / society name (e.g., Gachibowli, Kondapur, Banjara Hills)" 
+              placeholder="Enter locality" 
               className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-teal-500" 
               disabled={!isMapLoaded}
               required
             />
-            {!isMapLoaded && (
-              <p className="text-xs text-gray-500 mt-1">
-                Please wait for Google Maps to load before entering locality
-              </p>
-            )}
           </div>
         )}
 
-        {/* Landmark */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Landmark / Street *</label>
           <input 
             name="landmark" 
             value={formData.landmark} 
             onChange={handleChange} 
-            placeholder="e.g. Near Metro Station, Opposite Mall, etc." 
+            placeholder="e.g. Near Metro Station" 
             className="w-full border p-2 rounded focus:ring-2 focus:ring-teal-500"
             required
           />
         </div>
 
-        {/* Selected Location Display */}
         {formData.locality && (
           <div className="p-3 bg-teal-50 rounded-lg">
             <p className="text-sm text-teal-700">
               <strong>Selected Location:</strong>
             </p>
             <p className="text-sm text-gray-700">
-              📍 {formData.locality}, {formData.landmark}, {formData.city}
-            </p>
-            <p className="text-xs text-teal-600 mt-1">
-              Coordinates: {formData.coordinates.lat.toFixed(6)}, {formData.coordinates.lng.toFixed(6)}
+              {formData.locality}, {formData.landmark}, {formData.city}
             </p>
           </div>
         )}
       </div>
 
-      {/* Mark Locality on Map */}
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">📍 Property Location Preview</span>
-        </div>
-        <p className="text-xs text-gray-500 mb-2">
-          This map shows the exact location based on your input. The red marker indicates where buyers will see your property location.
-        </p>
-        
-        {/* Interactive Map */}
         <div 
           id="map" 
           className="w-full h-80 rounded-lg border bg-gray-100"
           style={{ minHeight: '320px' }}
         ></div>
-        <p className="text-xs text-gray-500">
-          ℹ️ Map is for preview only. Location updates automatically based on your locality input or pasted Maps link.
-        </p>
       </div>
 
       <h2 className="text-2xl font-bold text-teal-700 mt-6">Pricing</h2>
@@ -668,10 +685,10 @@ const PostProperty = () => {
 
       <button 
         type="submit" 
-        className="bg-teal-700 text-white px-8 py-3 rounded-lg hover:bg-teal-800 font-medium"
-        disabled={!isMapLoaded}
+        className="bg-teal-700 text-white px-8 py-3 rounded-lg hover:bg-teal-800 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+        disabled={!isMapLoaded || isSubmitting}
       >
-        Post Property
+        {isSubmitting ? 'Posting...' : 'Post Property'}
       </button>
     </form>
   );

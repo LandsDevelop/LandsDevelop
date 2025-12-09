@@ -31,14 +31,8 @@ function HomePage() {
             Find Your Perfect Land or Property
           </h1>
           <p className="text-lg md:text-xl mb-8 max-w-2xl text-gray-200">
-            Explore trusted real estate listings across Hyderabad. Post, search, and connect — all in one place.
+            Explore trusted real estate listings across Hyderabad. Post, search, and connect – all in one place.
           </p>
-          {/* <Link
-            to="/post-property"
-            className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-full text-lg font-medium shadow-md transition"
-          >
-            Post Your Property
-          </Link> */}
         </div>
       </section>
 
@@ -66,7 +60,7 @@ function HomePage() {
             />
             <h3 className="text-xl font-semibold mb-2">Smart Search</h3>
             <p className="text-gray-600">
-              Search properties by name, location, or even partial keywords — we’ll find the closest matches.
+              Search properties by name, location, or even partial keywords – we'll find the closest matches.
             </p>
           </div>
           <div>
@@ -88,7 +82,7 @@ function HomePage() {
             />
             <h3 className="text-xl font-semibold mb-2">Post Easily</h3>
             <p className="text-gray-600">
-              List your property in minutes — add details, upload images, and go live instantly.
+              List your property in minutes – add details, upload images, and go live instantly.
             </p>
           </div>
         </div>
@@ -126,7 +120,6 @@ function HomePage() {
   );
 }
 
-
 function App() {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -134,6 +127,7 @@ function App() {
       <div className="pt-0">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/properties" element={<SearchPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/post-property" element={<PostProperty />} />
@@ -152,15 +146,3 @@ function App() {
 }
 
 export default App;
-
-
-
-
-
-
-
-
-
-
-
-
