@@ -132,7 +132,7 @@ function App() {
           <Route path="/about" element={<AboutUs />} />
           <Route path="/post-property" element={<PostProperty />} />
           <Route path="/project/:id" element={<ProjectDetails />} />
-          <Route path="/property/:id" element={<PropertyDetails properties={[]} />} />
+          <Route path="/property/:id" element={<PropertyDetails />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/edit-property/:id" element={<EditProperty />} />
           <Route path="/interest-shown" element={<InterestShown />} />

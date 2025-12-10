@@ -1,26 +1,72 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  Bed, Bath, Square, MapPin, IndianRupee, ArrowLeft, Phone, Mail,
+  MapPin, IndianRupee, ArrowLeft, Users, Ruler, Compass,
+  Tag, ArrowLeftRight, Phone, Mail
 } from 'lucide-react';
 
-interface Property {
-  id: number;
-  title: string;
-  location: string;
-  price: string;
-  type: string;
-  beds: number;
-  baths: number;
-  area: string;
-  image: string;
-  bhk: number;
-  dealStatus?: string; // optional
-}
-
-const PropertyDetails: React.FC<{ properties: Property[] }> = ({ properties }) => {
+const PropertyDetails: React.FC = () => {
   const { id } = useParams();
-  const property = properties.find((p) => p.id === Number(id));
+  const [property, setProperty] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showContact, setShowContact] = useState(false);
+
+  useEffect(() => {
+    const fetchProperty = async () => {
+      try {
+        const res = await fetch(`http://localhost:5174/api/properties/${id}`);
+        const data = await res.json();
+        if (res.ok) {
+          setProperty(data.project);
+        } else {
+          console.error('Failed to fetch property:', data.error);
+        }
+      } catch (err) {
+        console.error('Error fetching property:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProperty();
+  }, [id]);
+
+  const handleShowContact = async () => {
+    const token = localStorage.getItem('token');
+    const phone = localStorage.getItem('phone');
+    
+    if (!token || !phone) {
+      alert('Please login first to view contact details');
+      return;
+    }
+
+    if (!property?._id) return;
+
+    try {
+      await fetch('http://localhost:5174/api/interests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: phone,
+          propertyId: property._id
+        })
+      });
+
+      setShowContact(true);
+    } catch (err) {
+      console.error('Error recording interest:', err);
+      setShowContact(true); // Still show contact even if interest recording fails
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="container mx-auto px-6">
+          <p className="text-center mt-12">Loading property details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!property) {
     return (
@@ -28,9 +74,13 @@ const PropertyDetails: React.FC<{ properties: Property[] }> = ({ properties }) =
         <div className="container mx-auto px-6">
           <div className="bg-white rounded-lg shadow-lg p-8 text-center">
             <h2 className="text-2xl font-bold mb-4">Property Not Found</h2>
-            <Link to="/" className="text-teal-600 hover:text-teal-700 flex items-center justify-center gap-2">
+            <p className="text-gray-600 mb-4">The property you're looking for doesn't exist or has been removed.</p>
+            <Link 
+              to="/properties" 
+              className="text-teal-600 hover:text-teal-700 flex items-center justify-center gap-2"
+            >
               <ArrowLeft className="h-5 w-5" />
-              Back to Home
+              Back to Properties
             </Link>
           </div>
         </div>
@@ -38,137 +88,258 @@ const PropertyDetails: React.FC<{ properties: Property[] }> = ({ properties }) =
     );
   }
 
+  // Parse dimensions if available
+  const dimensions = property.dimensions?.match(/(\d+)\s*ft\s*x\s*(\d+)\s*ft/);
+  const length = dimensions?.[1];
+  const width = dimensions?.[2];
+
+  const DealStatusBadge = ({ status }: { status: 'open' | 'closed' }) => (
+    <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+      status === 'open' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+    }`}>
+      <Tag className="h-4 w-4" />
+      <span className="font-medium capitalize">{status}</span>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
       <div className="container mx-auto px-6">
-        <Link to="/" className="inline-flex items-center text-teal-600 hover:text-teal-700 mb-6 gap-2">
-          <ArrowLeft className="h-5 w-5" />
-          Back to Listings
-        </Link>
+        <div className="flex justify-between items-center mb-6">
+          <Link
+            to="/properties"
+            className="inline-flex items-center text-teal-600 hover:text-teal-700 gap-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            Back to Properties
+          </Link>
+          <DealStatusBadge status={property.dealStatus || 'open'} />
+        </div>
 
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Property Images */}
-          <div className="relative h-[400px]">
+          {/* Property Image */}
+          <div className="relative h-[500px]">
             <img
-              src={`http://localhost:5174${property.image}`}
-              alt={property.title}
+              src={property.imageUrl ? `http://localhost:5174${property.imageUrl}` : 'https://via.placeholder.com/800x500?text=No+Image'}
+              alt={property.projectName || 'Property'}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = 'https://via.placeholder.com/800x500?text=No+Image';
+              }}
             />
             <div className="absolute top-4 right-4">
-              <span className="bg-teal-600 text-white px-4 py-2 rounded-full">
-                {property.type}
+              <span className="bg-teal-600 text-white px-4 py-2 rounded-full shadow-lg">
+                {property.developmentType || 'N/A'}
               </span>
             </div>
           </div>
 
-          {/* Property Info */}
+          {/* Property Details */}
           <div className="p-8">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">{property.title}</h1>
-                <p className="text-gray-600 flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  {property.location}
-                </p>
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-teal-600 flex items-center gap-2">
-                  <IndianRupee className="h-6 w-6" />
-                  {property.price}
-                </div>
-              </div>
-            </div>
+            <h1 className="text-3xl font-bold mb-2">{property.projectName || 'Untitled Property'}</h1>
+            <p className="text-gray-600 flex items-center gap-2 mb-4">
+              <MapPin className="h-5 w-5" />
+              {property.locality && property.city 
+                ? `${property.locality}, ${property.city}`
+                : property.location || 'Location not specified'}
+              {property.map && (
+                <a
+                  href={property.map}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-teal-600 hover:text-teal-700 ml-2"
+                >
+                  View on Map
+                </a>
+              )}
+            </p>
+
+            {/* Landmark */}
+            {property.landmark && (
+              <p className="text-gray-500 text-sm mb-6">
+                Near {property.landmark}
+              </p>
+            )}
 
             {/* Key Features */}
-            <div className="grid grid-cols-3 gap-6 mb-8 p-6 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 p-6 bg-gray-50 rounded-lg">
               <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <Bed className="h-8 w-8 text-teal-600" />
-                </div>
-                <p className="text-gray-600">Bedrooms</p>
-                <p className="text-xl font-semibold">{property.bhk} BHK</p>
+                <Ruler className="h-8 w-8 text-teal-600 mx-auto mb-2" />
+                <p className="text-gray-600">Total Area</p>
+                <p className="text-xl font-semibold">
+                  {property.totalArea} {property.areaUnit || ''}
+                </p>
+                {property.dimensions && <p className="text-sm text-gray-500">{property.dimensions}</p>}
               </div>
               <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <Bath className="h-8 w-8 text-teal-600" />
-                </div>
-                <p className="text-gray-600">Bathrooms</p>
-                <p className="text-xl font-semibold">{property.baths}</p>
+                <Users className="h-8 w-8 text-teal-600 mx-auto mb-2" />
+                <p className="text-gray-600">Developer Ratio</p>
+                <p className="text-xl font-semibold">{property.developerRatio || 'N/A'}</p>
               </div>
               <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <Square className="h-8 w-8 text-teal-600" />
-                </div>
-                <p className="text-gray-600">Area</p>
-                <p className="text-xl font-semibold">{property.area}</p>
+                <Compass className="h-8 w-8 text-teal-600 mx-auto mb-2" />
+                <p className="text-gray-600">Facing</p>
+                <p className="text-xl font-semibold">{property.facing || 'N/A'}</p>
+              </div>
+              <div className="text-center">
+                <IndianRupee className="h-8 w-8 text-teal-600 mx-auto mb-2" />
+                <p className="text-gray-600">Goodwill</p>
+                <p className="text-xl font-semibold">
+                  {property.goodwill ? `₹${parseInt(property.goodwill).toLocaleString()}` : 'N/A'}
+                </p>
               </div>
             </div>
+
+            {/* Pricing Details */}
+            <div className="grid grid-cols-2 gap-6 mb-8 p-6 bg-teal-50 rounded-lg">
+              <div>
+                <p className="text-gray-600 text-sm mb-1">Goodwill Amount</p>
+                <p className="text-2xl font-bold text-teal-700">
+                  {property.goodwill ? `₹${parseInt(property.goodwill).toLocaleString()}` : 'Not specified'}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-600 text-sm mb-1">Advance Required</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {property.advance ? `₹${parseInt(property.advance).toLocaleString()}` : 'Not specified'}
+                </p>
+              </div>
+            </div>
+
+            {/* Plot Dimensions Visual */}
+            {dimensions && (
+              <div className="mb-8 bg-gray-50 p-6 rounded-lg">
+                <h3 className="text-xl font-semibold mb-4">Plot Dimensions</h3>
+                <div className="flex justify-center">
+                  <div className="relative">
+                    <div
+                      className="border-2 border-teal-600 rounded-lg"
+                      style={{
+                        width: '300px',
+                        height: `${(Number(width) / Number(length)) * 300}px`
+                      }}
+                    >
+                      <div className="absolute -top-8 left-0 w-full flex justify-center items-center">
+                        <div className="flex items-center gap-2 text-teal-700">
+                          <ArrowLeftRight className="h-4 w-4" />
+                          <span className="font-medium">{length} ft</span>
+                        </div>
+                      </div>
+                      <div className="absolute -right-20 top-0 h-full flex items-center">
+                        <div className="flex items-center gap-2 text-teal-700" style={{ transform: 'rotate(90deg)' }}>
+                          <ArrowLeftRight className="h-4 w-4" />
+                          <span className="font-medium">{width} ft</span>
+                        </div>
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <p className="text-lg font-semibold text-teal-700">
+                            {property.totalArea} {property.areaUnit}
+                          </p>
+                          <p className="text-sm text-teal-600">Total Area</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Description */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold mb-4">Description</h2>
-              <p className="text-gray-600 leading-relaxed">
-                This beautiful {property.bhk} BHK property is located in the prime area of {property.location}.
-                It offers modern amenities and spacious rooms with excellent ventilation. The property comes with
-                {property.baths} bathrooms and covers an area of {property.area}.
-              </p>
-            </div>
-
-            {/* Amenities */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold mb-4">Amenities</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {['24/7 Security', 'Power Backup', 'Parking', 'Garden', 'Gym', 'Swimming Pool'].map((amenity) => (
-                  <div key={amenity} className="flex items-center gap-2">
-                    <div className="h-2 w-2 bg-teal-600 rounded-full"></div>
-                    <span>{amenity}</span>
-                  </div>
-                ))}
+            {property.description && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4">Description</h2>
+                <p className="text-gray-600 leading-relaxed">{property.description}</p>
               </div>
-            </div>
+            )}
+
+            {/* Additional Details */}
+            {(property.roadSize || property.northSideLength) && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4">Additional Details</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {property.roadSize && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-gray-600 text-sm">Road Size</p>
+                      <p className="font-semibold">{property.roadSize} m</p>
+                    </div>
+                  )}
+                  {property.northSideLength && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-gray-600 text-sm">North Side</p>
+                      <p className="font-semibold">{property.northSideLength} ft</p>
+                    </div>
+                  )}
+                  {property.southSideLength && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-gray-600 text-sm">South Side</p>
+                      <p className="font-semibold">{property.southSideLength} ft</p>
+                    </div>
+                  )}
+                  {property.eastSideLength && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-gray-600 text-sm">East Side</p>
+                      <p className="font-semibold">{property.eastSideLength} ft</p>
+                    </div>
+                  )}
+                  {property.westSideLength && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-gray-600 text-sm">West Side</p>
+                      <p className="font-semibold">{property.westSideLength} ft</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Contact Section */}
-            <div className="border-t pt-8">
+            <div className="border-t pt-8 mt-8">
               <h2 className="text-2xl font-semibold mb-4">Contact Owner</h2>
 
               {property.dealStatus === 'closed' ? (
-                <div className="text-red-600 font-semibold">
-                  Deal Closed – Contact details are no longer available.
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-red-700 font-semibold">
+                    This deal has been closed. Contact details are no longer available.
+                  </p>
                 </div>
+              ) : !showContact ? (
+                <button
+                  onClick={handleShowContact}
+                  className="bg-teal-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-teal-700 transition-colors"
+                >
+                  Show Contact Details
+                </button>
               ) : (
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <p className="flex items-center gap-2">
+                <div className="space-y-3 text-gray-700 mt-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="flex items-center gap-2 text-lg">
                       <Phone className="h-5 w-5 text-teal-600" />
-                      +91 9014011885
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <Mail className="h-5 w-5 text-teal-600" />
-                      ashok@landsdevelop.com
+                      <span className="font-semibold">
+                        {property.contactPhone || property.phone || 'Not Provided'}
+                      </span>
                     </p>
                   </div>
-                  <form className="space-y-4">
-                    <input
-                      type="text"
-                      placeholder="Your Name"
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    />
-                    <input
-                      type="tel"
-                      placeholder="Your Phone"
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    />
-                    <textarea
-                      placeholder="Your Message"
-                      rows={4}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    ></textarea>
-                    <button className="w-full bg-teal-600 text-white py-2 rounded-lg hover:bg-teal-700 transition-colors">
-                      Send Message
-                    </button>
-                  </form>
+                  {property.contactEmail && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="flex items-center gap-2 text-lg">
+                        <Mail className="h-5 w-5 text-teal-600" />
+                        <span className="font-semibold">{property.contactEmail}</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
+            </div>
+
+            {/* Back Button */}
+            <div className="text-center mt-8">
+              <Link 
+                to="/properties" 
+                className="text-teal-600 hover:underline inline-flex items-center gap-2"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                Back to All Properties
+              </Link>
             </div>
           </div>
         </div>

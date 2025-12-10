@@ -1,5 +1,6 @@
 import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { Search, MapPin, Filter, X } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';   // <-- ADDED
 
 interface Property {
   _id: string;
@@ -39,16 +40,15 @@ const SearchBar: React.FC = () => {
   });
   const [hasSearched, setHasSearched] = useState(false);
   const [googleMapsStatus, setGoogleMapsStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
-  
-  // Refs for Google Maps integration
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
 
-  // Development types and ratios for filters
+  const navigate = useNavigate();   // <-- ADDED
+
   const developmentTypes = ['All', 'villa', 'standalone', 'high-rise', 'plotted', 'mixed'];
   const ratios = ['All', '50:50', '60:40', '70:30', '80:20'];
 
-  // Enhanced location matching without Google Maps dependency
   const fuzzyLocationMatch = (query: string): string[] => {
     const locationMappings: { [key: string]: string[] } = {
       'gachibowli': ['gachibowli', 'gatchibowli', 'gachbowli', 'gachi bowli'],
@@ -65,10 +65,8 @@ const SearchBar: React.FC = () => {
     const queryLower = query.toLowerCase().trim();
     const matches: string[] = [];
 
-    // Direct match
     matches.push(queryLower);
 
-    // Find fuzzy matches
     Object.entries(locationMappings).forEach(([canonical, variants]) => {
       variants.forEach(variant => {
         if (queryLower.includes(variant) || variant.includes(queryLower)) {
@@ -78,11 +76,9 @@ const SearchBar: React.FC = () => {
       });
     });
 
-    // Remove duplicates
     return [...new Set(matches)];
   };
 
-  // Load Google Maps API (with better error handling)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
@@ -94,9 +90,8 @@ const SearchBar: React.FC = () => {
       }
 
       const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      
       if (!apiKey) {
-        console.warn('Google Maps API key not found. Using fallback search.');
+        console.warn('Google Maps API key not found.');
         setGoogleMapsStatus('error');
         return;
       }
@@ -105,9 +100,8 @@ const SearchBar: React.FC = () => {
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=3.55`;
       script.async = true;
       script.defer = true;
-      
+
       script.onload = () => {
-        // Add a small delay to ensure Google Maps is fully initialized
         timeoutId = setTimeout(() => {
           if (window.google?.maps?.places) {
             setGoogleMapsStatus('loaded');
@@ -117,12 +111,12 @@ const SearchBar: React.FC = () => {
           }
         }, 1000);
       };
-      
+
       script.onerror = () => {
-        console.warn('Failed to load Google Maps API. Using fallback search.');
+        console.warn('Failed to load Google Maps API.');
         setGoogleMapsStatus('error');
       };
-      
+
       document.head.appendChild(script);
     };
 
@@ -134,31 +128,21 @@ const SearchBar: React.FC = () => {
   }, []);
 
   const initializeAutocomplete = () => {
-    if (!window.google?.maps?.places || !searchInputRef.current) {
-      return;
-    }
+    if (!window.google?.maps?.places || !searchInputRef.current) return;
 
     try {
-      // Use the newer Places API approach
       autocompleteRef.current = new window.google.maps.places.Autocomplete(
         searchInputRef.current,
         {
           types: ['geocode', 'establishment'],
           componentRestrictions: { country: 'IN' },
           fields: ['formatted_address', 'geometry', 'address_components', 'name'],
-          bounds: new window.google.maps.LatLngBounds(
-            new window.google.maps.LatLng(17.2, 78.2),
-            new window.google.maps.LatLng(17.6, 78.8)
-          ),
-          strictBounds: false
         }
       );
 
       autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
-      console.log('Google Places Autocomplete initialized successfully');
-      
     } catch (error) {
-      console.warn('Failed to initialize Google Places Autocomplete:', error);
+      console.warn('Autocomplete init failed:', error);
       setGoogleMapsStatus('error');
     }
   };
@@ -166,18 +150,16 @@ const SearchBar: React.FC = () => {
   const handlePlaceSelect = () => {
     try {
       const place = autocompleteRef.current?.getPlace();
-      
       if (!place) return;
-      
+
       let searchTerm = '';
-      
       if (place.address_components) {
-        const locality = place.address_components.find((c: any) => 
-          c.types?.includes('sublocality_level_1') || 
+        const locality = place.address_components.find((c: any) =>
+          c.types?.includes('sublocality_level_1') ||
           c.types?.includes('sublocality') ||
           c.types?.includes('locality')
         );
-        
+
         searchTerm = locality?.long_name || place.name || place.formatted_address || searchQuery;
       } else {
         searchTerm = place.name || searchQuery;
@@ -188,12 +170,18 @@ const SearchBar: React.FC = () => {
         setTimeout(() => handleSearch(searchTerm), 100);
       }
     } catch (error) {
-      console.warn('Error handling place selection:', error);
+      console.warn('Place select error:', error);
     }
   };
 
   const handleSearch = async (query: string = searchQuery, currentFilters: SearchFilters = filters) => {
-    if (!query.trim() && currentFilters.developmentType === 'All' && !currentFilters.minArea && !currentFilters.maxArea && currentFilters.ratio === 'All') {
+    if (
+      !query.trim() &&
+      currentFilters.developmentType === 'All' &&
+      !currentFilters.minArea &&
+      !currentFilters.maxArea &&
+      currentFilters.ratio === 'All'
+    ) {
       return;
     }
 
@@ -201,34 +189,21 @@ const SearchBar: React.FC = () => {
     setHasSearched(true);
 
     try {
-      // First attempt: Direct search
       let searchResults = await performDirectSearch(query.trim(), currentFilters);
-      
-      // If no results and we have a query, try fuzzy matching
+
       if (searchResults.length === 0 && query.trim()) {
-        console.log('No direct results found, trying fuzzy location matching...');
-        
-        const alternativeQueries = fuzzyLocationMatch(query.trim());
-        
-        for (const altQuery of alternativeQueries.slice(1, 4)) { // Try up to 3 alternatives
-          if (altQuery !== query.trim().toLowerCase()) {
-            console.log(`Trying fuzzy search with: ${altQuery}`);
-            const fuzzyResults = await performDirectSearch(altQuery, currentFilters);
-            if (fuzzyResults.length > 0) {
-              searchResults = fuzzyResults;
-              break;
-            }
+        const alternatives = fuzzyLocationMatch(query.trim());
+        for (const alt of alternatives.slice(1, 4)) {
+          const fuzzyResults = await performDirectSearch(alt, currentFilters);
+          if (fuzzyResults.length > 0) {
+            searchResults = fuzzyResults;
+            break;
           }
         }
       }
 
-      // Filter out closed deals
-      const openProperties = searchResults.filter((property: Property) => 
-        property.dealStatus !== 'closed'
-      );
-      
-      setProperties(openProperties);
-      
+      const openProps = searchResults.filter(p => p.dealStatus !== 'closed');
+      setProperties(openProps);
     } catch (error) {
       console.error('Search error:', error);
       setProperties([]);
@@ -245,15 +220,9 @@ const SearchBar: React.FC = () => {
     if (currentFilters.maxArea) params.append('maxArea', currentFilters.maxArea);
     if (currentFilters.ratio !== 'All') params.append('ratio', currentFilters.ratio);
 
-    const response = await fetch(`http://localhost:5174/api/search?${params.toString()}`);
-    const data = await response.json();
-
-    if (response.ok) {
-      return data;
-    } else {
-      console.error('Search failed:', data.error);
-      return [];
-    }
+    const res = await fetch(`http://localhost:5174/api/search?${params.toString()}`);
+    const data = await res.json();
+    return res.ok ? data : [];
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -270,9 +239,7 @@ const SearchBar: React.FC = () => {
   const handleFilterChange = (key: keyof SearchFilters, value: string) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
-    if (hasSearched) {
-      handleSearch(searchQuery, newFilters);
-    }
+    if (hasSearched) handleSearch(searchQuery, newFilters);
   };
 
   const clearSearch = () => {
@@ -285,10 +252,8 @@ const SearchBar: React.FC = () => {
       maxArea: '',
       ratio: 'All'
     });
-    
-    if (searchInputRef.current) {
-      searchInputRef.current.value = '';
-    }
+
+    if (searchInputRef.current) searchInputRef.current.value = '';
   };
 
   const formatPrice = (price: string) => {
@@ -300,9 +265,7 @@ const SearchBar: React.FC = () => {
     return `₹${num.toLocaleString()}`;
   };
 
-  const formatArea = (area: string, unit: string) => {
-    return `${area} ${unit}`;
-  };
+  const formatArea = (area: string, unit: string) => `${area} ${unit}`;
 
   const getSearchStatusMessage = () => {
     switch (googleMapsStatus) {
@@ -329,6 +292,7 @@ const SearchBar: React.FC = () => {
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <MapPin className="h-5 w-5 text-gray-400" />
             </div>
+
             <input
               ref={searchInputRef}
               type="text"
@@ -336,35 +300,29 @@ const SearchBar: React.FC = () => {
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               placeholder={
-                googleMapsStatus === 'loaded' 
-                  ? "Smart search enabled - try 'Kondapoor' or 'near Hitech City'" 
+                googleMapsStatus === 'loaded'
+                  ? "Smart search enabled - try 'Kondapoor' or 'near Hitech City'"
                   : "Search by location, locality, project name..."
               }
               className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
             />
+
             <div className="absolute inset-y-0 right-0 flex items-center space-x-2 pr-3">
               {googleMapsStatus === 'loading' && (
                 <div className="animate-spin h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full"></div>
               )}
+
               {(searchQuery || hasSearched) && (
-                <button
-                  onClick={clearSearch}
-                  className="text-gray-400 hover:text-gray-600"
-                  type="button"
-                >
+                <button onClick={clearSearch} className="text-gray-400 hover:text-gray-600" type="button">
                   <X className="h-5 w-5" />
                 </button>
               )}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="text-gray-400 hover:text-teal-600"
-                type="button"
-              >
+
+              <button onClick={() => setShowFilters(!showFilters)} className="text-gray-400 hover:text-teal-600" type="button">
                 <Filter className="h-5 w-5" />
               </button>
             </div>
-            
-            {/* Search Status Indicator */}
+
             <div className="absolute top-full left-0 mt-1">
               <span className={`text-xs ${statusMessage.color} flex items-center`}>
                 <span className="mr-1">{statusMessage.icon}</span>
@@ -373,7 +331,7 @@ const SearchBar: React.FC = () => {
             </div>
           </div>
 
-          {/* Search and Filter Buttons */}
+          {/* Buttons */}
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => handleSearch()}
@@ -384,13 +342,11 @@ const SearchBar: React.FC = () => {
               <Search className="h-4 w-4" />
               <span>{loading ? 'Searching...' : 'Search Properties'}</span>
             </button>
-            
+
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`px-4 py-2 rounded-lg border flex items-center space-x-2 ${
-                showFilters 
-                  ? 'bg-teal-50 text-teal-700 border-teal-300' 
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                showFilters ? 'bg-teal-50 text-teal-700 border-teal-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
               }`}
               type="button"
             >
@@ -398,24 +354,21 @@ const SearchBar: React.FC = () => {
               <span>Filters</span>
             </button>
 
-            {/* Search Tips */}
             <div className="text-sm text-gray-500 flex items-center">
               💡 Try: "Gachibowli", "Kondapoor", or "near Hitech City"
             </div>
           </div>
 
-          {/* Advanced Filters */}
+          {/* Filter Section */}
           {showFilters && (
             <div className="border-t pt-4 mt-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Development Type
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Development Type</label>
                   <select
                     value={filters.developmentType}
                     onChange={(e) => handleFilterChange('developmentType', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-teal-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   >
                     {developmentTypes.map(type => (
                       <option key={type} value={type}>
@@ -426,39 +379,31 @@ const SearchBar: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Min Area
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Area</label>
                   <input
                     type="number"
                     value={filters.minArea}
                     onChange={(e) => handleFilterChange('minArea', e.target.value)}
-                    placeholder="Min area"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-teal-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Max Area
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Area</label>
                   <input
                     type="number"
                     value={filters.maxArea}
                     onChange={(e) => handleFilterChange('maxArea', e.target.value)}
-                    placeholder="Max area"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-teal-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Developer Ratio
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Developer Ratio</label>
                   <select
                     value={filters.ratio}
                     onChange={(e) => handleFilterChange('ratio', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-teal-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   >
                     {ratios.map(ratio => (
                       <option key={ratio} value={ratio}>
@@ -473,7 +418,7 @@ const SearchBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Search Results */}
+      {/* Results */}
       {hasSearched && (
         <div className="mb-4">
           <div className="flex justify-between items-center mb-4">
@@ -481,23 +426,22 @@ const SearchBar: React.FC = () => {
               {loading ? 'Searching with smart location matching...' : `Found ${properties.length} properties`}
               {searchQuery && ` for "${searchQuery}"`}
             </h2>
+
             {properties.length > 0 && (
-              <span className="text-sm text-gray-500">
-                Sorted by latest first
-              </span>
+              <span className="text-sm text-gray-500">Sorted by latest first</span>
             )}
           </div>
 
+          {/* Loading UI */}
           {loading ? (
             <div className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center space-x-2">
                   <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                  <span className="text-blue-700 text-sm">
-                    🔍 Searching your properties with intelligent location matching...
-                  </span>
+                  <span className="text-blue-700 text-sm">🔍 Searching your properties...</span>
                 </div>
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3].map(i => (
                   <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse">
@@ -514,14 +458,15 @@ const SearchBar: React.FC = () => {
               <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No properties found</h3>
               <div className="text-gray-500 space-y-2">
-                <p>We searched with intelligent location matching but couldn't find properties matching your criteria.</p>
+                <p>We tried intelligent location matching but found no results.</p>
+
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4 text-left max-w-lg mx-auto">
                   <p className="font-medium text-blue-800 mb-2">💡 Search Tips:</p>
                   <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Try broader terms like "Hyderabad" or area names</li>
+                    <li>• Try broader terms like "Hyderabad"</li>
                     <li>• Spelling variations work: "Kondapoor" → "Kondapur"</li>
-                    <li>• Use landmarks: "near Hitech City" or "Financial District"</li>
-                    <li>• Check different property types or adjust area filters</li>
+                    <li>• Use landmarks like "near Hitech City"</li>
+                    <li>• Adjust filters for area or development type</li>
                   </ul>
                 </div>
               </div>
@@ -530,6 +475,7 @@ const SearchBar: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {properties.map((property) => (
                 <div key={property._id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                  
                   {property.imageUrl && (
                     <div className="h-48 bg-gray-200 rounded-t-lg overflow-hidden">
                       <img
@@ -538,12 +484,13 @@ const SearchBar: React.FC = () => {
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y3ZjdmNyIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5Qcm9wZXJ0eSBJbWFnZTwvdGV4dD48L3N2Zz4=';
+                          target.src =
+                            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y3ZjdmNyIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5Qcm9wZXJ0eSBJbWFnZTwvdGV4dD48L3N2Zz4=';
                         }}
                       />
                     </div>
                   )}
-                  
+
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
@@ -553,19 +500,17 @@ const SearchBar: React.FC = () => {
                         {property.developmentType}
                       </span>
                     </div>
-                    
+
                     <div className="space-y-2 mb-4">
                       <p className="text-sm text-gray-600 flex items-center">
                         <MapPin className="h-4 w-4 mr-1" />
                         {property.locality}, {property.city}
                       </p>
-                      
+
                       {property.landmark && (
-                        <p className="text-sm text-gray-500">
-                          Near {property.landmark}
-                        </p>
+                        <p className="text-sm text-gray-500">Near {property.landmark}</p>
                       )}
-                      
+
                       <p className="text-sm font-medium text-gray-700">
                         Area: {formatArea(property.totalArea, property.areaUnit)}
                       </p>
@@ -590,14 +535,15 @@ const SearchBar: React.FC = () => {
                           </p>
                         )}
                       </div>
-                      
-                      <button 
-                        onClick={() => window.location.href = `/property/${property._id}`}
+
+                      {/* UPDATED: Using <Link> instead of window.location.href */}
+                      <Link
+                        to={`/property/${property._id}`}
                         className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 text-sm"
-                        type="button"
                       >
                         View Details
-                      </button>
+                      </Link>
+
                     </div>
                   </div>
                 </div>
