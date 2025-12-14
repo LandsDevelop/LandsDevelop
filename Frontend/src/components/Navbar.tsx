@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import LoginModal from "./LoginModal";
-import logo from "../../dist/assets/Landsdevelop_Logo_Name.png";
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -62,7 +61,7 @@ const Navbar: React.FC = () => {
           <div className="flex-1 flex justify-start">
             <Link to="/" className="flex items-center">
               <img
-                src={logo}
+                src="/Landsdevelop_Logo_Name.png"
                 alt="LandsDevelop Logo"
                 className="h-12 w-auto object-contain ml-5"
               />
