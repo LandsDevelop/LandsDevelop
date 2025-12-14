@@ -13,6 +13,7 @@ import UserPostedProperties from './components/UserPostedProperties';
 import SearchBar from './components/SearchBar';
 import Footer from './components/footer';
 import SearchPage from './components/SearchPage';
+import PropertiesListingPage from './components/PropertiesListingPage';
 
 function HomePage() {
   return (
@@ -127,8 +128,8 @@ function App() {
       <div className="pt-0">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/properties" element={<SearchPage />} />
-          <Route path="/search" element={<SearchPage />} />
+          <Route path="/properties" element={<PropertiesListingPage />} />
+          <Route path="/search" element={<PropertiesListingPage />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/post-property" element={<PostProperty />} />
           <Route path="/project/:id" element={<ProjectDetails />} />
