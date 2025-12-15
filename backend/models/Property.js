@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const propertySchema = new mongoose.Schema({
   projectName: { 
     type: String, 
-    required: true 
+    default: ''  // Made optional
   },
   developmentType: { 
     type: String, 
@@ -17,7 +17,7 @@ const propertySchema = new mongoose.Schema({
     type: String, 
     default: 'Sq Yards' 
   },
-  // Plot dimensions for all four sides
+  // Plot dimensions for all four sides (in feet)
   northSideLength: { 
     type: String, 
     default: '' 
@@ -37,10 +37,10 @@ const propertySchema = new mongoose.Schema({
   dimensions: { 
     type: String, 
     default: '' 
-  }, // Keep for backward compatibility
+  },
   roadSize: { 
     type: String, 
-    default: '' 
+    default: ''  // In feet now
   },
   developerRatio: { 
     type: String, 
@@ -52,11 +52,11 @@ const propertySchema = new mongoose.Schema({
   },
   goodwill: { 
     type: String, 
-    default: '' 
+    default: ''  // Optional
   },
   advance: { 
     type: String, 
-    default: '' 
+    default: ''  // Optional
   },
   address: { 
     type: String, 
@@ -68,11 +68,15 @@ const propertySchema = new mongoose.Schema({
   },
   landmark: { 
     type: String, 
-    default: '' 
+    required: true  // Made required
   },
   locality: { 
     type: String, 
     required: true 
+  },
+  societyName: {  // NEW: For apartment/society name
+    type: String,
+    default: ''
   },
   map: { 
     type: String, 
@@ -81,10 +85,10 @@ const propertySchema = new mongoose.Schema({
   coordinates: { 
     type: String, 
     default: '' 
-  }, // Store as JSON string
+  },
   description: { 
     type: String, 
-    default: '' 
+    default: ''  // Optional
   },
   selectedAmenities: { 
     type: [String], 
@@ -93,6 +97,10 @@ const propertySchema = new mongoose.Schema({
   imageUrl: { 
     type: String, 
     default: '' 
+  },
+  plotDiagramUrl: {  // NEW: For 2D plot diagram
+    type: String,
+    default: ''
   },
   contactEmail: { 
     type: String, 
@@ -117,6 +125,12 @@ const propertySchema = new mongoose.Schema({
     default: 'open',
     enum: ['open', 'closed']
   },
+  status: {  // NEW: For admin approval
+    type: String,
+    default: 'pending',
+    enum: ['pending', 'approved', 'rejected'],
+    index: true
+  }
 }, { 
   timestamps: true 
 });
@@ -125,5 +139,6 @@ const propertySchema = new mongoose.Schema({
 propertySchema.index({ city: 1, locality: 1 });
 propertySchema.index({ developmentType: 1 });
 propertySchema.index({ dealStatus: 1 });
+propertySchema.index({ status: 1 });
 
 module.exports = mongoose.model('Property', propertySchema);

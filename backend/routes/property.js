@@ -18,14 +18,17 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// POST /api/add - Add new property
-router.post('/add', upload.single('image'), async (req, res) => {
+// POST /api/add - Add new property (pending approval)
+router.post('/add', upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'plotDiagram', maxCount: 1 }
+]), async (req, res) => {
   try {
     const {
-      projectName, developmentType, totalArea, areaUnit,
+      developmentType, totalArea, areaUnit,
       northSideLength, southSideLength, eastSideLength, westSideLength,
       facing, roadSize, developerRatio,
-      city, locality, landmark, map, goodwill, advance,
+      city, locality, societyName, landmark, map, goodwill, advance,
       description, address, selectedAmenities, coordinates
     } = req.body;
 
@@ -42,22 +45,21 @@ router.post('/add', upload.single('image'), async (req, res) => {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
     
-    // ✅ Get user from database to ensure we have phone number
     const user = await User.findById(decoded.id);
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // ✅ Ensure phone number is available
     if (!user.phone) {
       return res.status(400).json({ error: 'User phone number not found' });
     }
 
     console.log(`Creating property for user: ${user.phone}`);
 
+    const files = req.files;
+
     const newProperty = new Property({
-      projectName,
       developmentType,
       totalArea,
       areaUnit,
@@ -70,27 +72,30 @@ router.post('/add', upload.single('image'), async (req, res) => {
       developerRatio,
       city,
       locality,
+      societyName: societyName || '',
       landmark,
       map,
       coordinates,
-      goodwill,
-      advance,
-      description,
+      goodwill: goodwill || '',
+      advance: advance || '',
+      description: description || '',
       address,
       selectedAmenities: selectedAmenities ? JSON.parse(selectedAmenities) : [],
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : '',
+      imageUrl: files['image'] ? `/uploads/${files['image'][0].filename}` : '',
+      plotDiagramUrl: files['plotDiagram'] ? `/uploads/${files['plotDiagram'][0].filename}` : '',
       contactEmail: user.email || '',
-      contactPhone: user.phone,  // ✅ Always set from user object
-      phone: user.phone,          // ✅ Always set from user object
+      contactPhone: user.phone,
+      phone: user.phone,
       userId: user._id.toString(),
+      status: 'pending',  // Set to pending for admin approval
     });
 
     await newProperty.save();
     
-    console.log(`Property saved successfully with phone: ${newProperty.phone}`);
+    console.log(`Property saved successfully with phone: ${newProperty.phone}, status: pending`);
     
     res.status(200).json({ 
-      message: 'Property saved successfully', 
+      message: 'Property submitted successfully! It will be visible after admin approval.', 
       property: newProperty 
     });
   } catch (err) {
@@ -102,10 +107,10 @@ router.post('/add', upload.single('image'), async (req, res) => {
   }
 });
 
-// GET /api/all - Get all properties
+// GET /api/all - Get all APPROVED properties only
 router.get('/all', async (req, res) => {
   try {
-    const properties = await Property.find();
+    const properties = await Property.find({ status: 'approved' });
     res.json(properties);
   } catch (err) {
     console.error(err);
@@ -113,20 +118,19 @@ router.get('/all', async (req, res) => {
   }
 });
 
-// GET /api/user-properties-by-phone/:phone - Get properties by phone
+// GET /api/user-properties-by-phone/:phone - Get properties by phone (all statuses for user)
 router.get('/user-properties-by-phone/:phone', async (req, res) => {
   try {
     const { phone } = req.params;
     console.log(`Fetching properties for phone: ${phone}`);
     
-    // ✅ Search by phone field
     const properties = await Property.find({ phone: phone });
     
     console.log(`Found ${properties.length} properties for phone: ${phone}`);
     
     res.json(properties);
   } catch (err) {
-    console.error('Error fetching user properties:', err);
+    console.error(err);
     res.status(500).json({ error: 'Failed to fetch user properties' });
   }
 });
@@ -136,6 +140,26 @@ router.get('/properties/:id', async (req, res) => {
   try {
     const project = await Property.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found' });
+    
+    // Only return if approved (unless requested by owner)
+    if (project.status !== 'approved') {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+          const user = await User.findById(decoded.id);
+          
+          // Allow owner or admin to see pending/rejected properties
+          if (user && (user.phone === project.phone || user.phone === '9014011885')) {
+            return res.json({ project });
+          }
+        } catch (err) {
+          // Token invalid, proceed with rejection
+        }
+      }
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
     res.json({ project });
   } catch (err) {
     console.error(err);
@@ -156,7 +180,6 @@ router.get('/user-properties', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // ✅ Search by phone number
     const properties = await Property.find({ phone: user.phone });
     
     console.log(`Found ${properties.length} properties for user phone: ${user.phone}`);
@@ -181,7 +204,6 @@ router.delete('/properties/:id', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // ✅ Match by phone number
     const property = await Property.findOneAndDelete({ 
       _id: req.params.id, 
       phone: user.phone
@@ -203,7 +225,10 @@ router.delete('/properties/:id', async (req, res) => {
 });
 
 // PUT /api/properties/:id - Update property
-router.put('/properties/:id', upload.single('image'), async (req, res) => {
+router.put('/properties/:id', upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'plotDiagram', maxCount: 1 }
+]), async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
@@ -215,14 +240,22 @@ router.put('/properties/:id', upload.single('image'), async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const files = req.files;
+
     const updates = {
       ...req.body,
-      phone: user.phone,  // ✅ Ensure phone is always set
+      phone: user.phone,
       contactPhone: user.phone,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
+      status: 'pending',  // Reset to pending when edited
     };
 
-    // ✅ Match by phone number
+    if (files['image']) {
+      updates.imageUrl = `/uploads/${files['image'][0].filename}`;
+    }
+    if (files['plotDiagram']) {
+      updates.plotDiagramUrl = `/uploads/${files['plotDiagram'][0].filename}`;
+    }
+
     const updated = await Property.findOneAndUpdate(
       { 
         _id: req.params.id, 
@@ -271,33 +304,24 @@ router.get('/interests/:userId', async (req, res) => {
   }
 });
 
-// GET /api/interests-owned-by-you/:ownerEmail - Get interests on your properties
-router.get('/interests-owned-by-you/:ownerEmail', async (req, res) => {
-  try {
-    const ownerEmail = req.params.ownerEmail;
-    const ownerProps = await Property.find({ contactEmail: ownerEmail }).select('_id projectName locality');
-
-    const propertyIds = ownerProps.map(p => p._id);
-
-    const interests = await Interest.find({ propertyId: { $in: propertyIds } })
-      .populate('propertyId');
-
-    res.json(interests);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch interests on your properties' });
-  }
-});
-
-// GET /api/search - Search properties
+// GET /api/search - Search APPROVED properties only
 router.get('/search', async (req, res) => {
   try {
     const { q = '', developmentType, minArea, maxArea, ratio } = req.query;
     const regex = new RegExp(q, 'i');
 
-    const match = q
-      ? { $or: [{ city: regex }, { locality: regex }, { projectName: regex }, { address: regex }, { landmark: regex }] }
-      : {};
+    const match = { status: 'approved' };  // Only show approved properties
+    
+    if (q) {
+      match.$or = [
+        { city: regex }, 
+        { locality: regex }, 
+        { societyName: regex },
+        { projectName: regex }, 
+        { address: regex }, 
+        { landmark: regex }
+      ];
+    }
 
     if (developmentType && developmentType !== 'All') {
       match.developmentType = new RegExp(`^${developmentType}$`, 'i');
@@ -347,7 +371,6 @@ router.patch('/properties/:id/close', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // ✅ Match by phone number
     const updated = await Property.findOneAndUpdate(
       { 
         _id: req.params.id, 

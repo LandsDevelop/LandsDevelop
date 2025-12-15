@@ -12,6 +12,7 @@ import InterestedInYourProperties from './components/InterestedInYourProperties'
 import UserPostedProperties from './components/UserPostedProperties';
 import SearchBar from './components/SearchBar';
 import Footer from './components/footer';
+import AdminPanel from './components/AdminPanel';
 import SearchPage from './components/SearchPage';
 import PropertiesListingPage from './components/PropertiesListingPage';
 
@@ -132,6 +133,7 @@ function App() {
           <Route path="/search" element={<PropertiesListingPage />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/post-property" element={<PostProperty />} />
+          <Route path="/admin" element={<AdminPanel />} />
           <Route path="/project/:id" element={<ProjectDetails />} />
           <Route path="/property/:id" element={<PropertyDetails />} />
           <Route path="/profile" element={<UserProfile />} />

@@ -1,4 +1,5 @@
 import React, { useState, ChangeEvent, FormEvent, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 declare global {
   interface Window {
@@ -8,8 +9,8 @@ declare global {
 }
 
 const PostProperty = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    projectName: '',
     developmentType: '',
     totalArea: '',
     areaUnit: 'Sq Yards',
@@ -22,6 +23,7 @@ const PostProperty = () => {
     developerRatio: '',
     city: 'Hyderabad',
     locality: '',
+    societyName: '',
     landmark: '',
     coordinates: { lat: 17.385044, lng: 78.486671 },
     mapLink: '',
@@ -29,6 +31,7 @@ const PostProperty = () => {
     advance: '',
     description: '',
     image: null as File | null,
+    plotDiagram: null as File | null,
   });
 
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -37,9 +40,11 @@ const PostProperty = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const localityAutocompleteRef = useRef<any>(null);
+  const societyAutocompleteRef = useRef<any>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const localityInputRef = useRef<HTMLInputElement>(null);
+  const societyInputRef = useRef<HTMLInputElement>(null);
   const mapLinkInputRef = useRef<HTMLInputElement>(null);
 
   const cities = [
@@ -60,6 +65,7 @@ const PostProperty = () => {
         initializeMap();
         setTimeout(() => {
           initializeLocalityAutocomplete();
+          initializeSocietyAutocomplete();
         }, 100);
       };
       
@@ -73,6 +79,7 @@ const PostProperty = () => {
       setIsMapLoaded(true);
       initializeMap();
       initializeLocalityAutocomplete();
+      initializeSocietyAutocomplete();
     }
   }, []);
 
@@ -82,19 +89,42 @@ const PostProperty = () => {
         mapRef.current = new window.google.maps.Map(document.getElementById('map'), {
           center: formData.coordinates,
           zoom: 12,
-          mapTypeControl: false,
-          streetViewControl: false,
-          draggable: false,
+          mapTypeControl: true,
+          streetViewControl: true,
+          draggable: true,
           zoomControl: true,
-          scrollwheel: false,
-          disableDoubleClickZoom: true,
+          scrollwheel: true,
+          disableDoubleClickZoom: false,
         });
 
         markerRef.current = new window.google.maps.Marker({
           position: formData.coordinates,
           map: mapRef.current,
-          draggable: false,
+          draggable: true,
           title: 'Property Location'
+        });
+
+        // Update coordinates when marker is dragged
+        markerRef.current.addListener('dragend', (event: any) => {
+          const lat = event.latLng.lat();
+          const lng = event.latLng.lng();
+          setFormData(prev => ({
+            ...prev,
+            coordinates: { lat, lng },
+            mapLink: `https://maps.google.com/?q=${lat},${lng}`
+          }));
+        });
+
+        // Update coordinates when map is clicked
+        mapRef.current.addListener('click', (event: any) => {
+          const lat = event.latLng.lat();
+          const lng = event.latLng.lng();
+          markerRef.current.setPosition({ lat, lng });
+          setFormData(prev => ({
+            ...prev,
+            coordinates: { lat, lng },
+            mapLink: `https://maps.google.com/?q=${lat},${lng}`
+          }));
         });
 
         console.log('Map initialized successfully');
@@ -107,8 +137,6 @@ const PostProperty = () => {
   const initializeLocalityAutocomplete = () => {
     if (window.google && localityInputRef.current && !useMapLink) {
       try {
-        console.log('Initializing locality autocomplete...');
-        
         localityAutocompleteRef.current = new window.google.maps.places.Autocomplete(
           localityInputRef.current,
           {
@@ -124,10 +152,32 @@ const PostProperty = () => {
         );
 
         localityAutocompleteRef.current.addListener('place_changed', handleLocalitySelect);
-        console.log('Locality autocomplete initialized successfully');
-        
       } catch (error) {
         console.error('Error initializing locality autocomplete:', error);
+      }
+    }
+  };
+
+  const initializeSocietyAutocomplete = () => {
+    if (window.google && societyInputRef.current && !useMapLink) {
+      try {
+        societyAutocompleteRef.current = new window.google.maps.places.Autocomplete(
+          societyInputRef.current,
+          {
+            types: ['establishment', 'point_of_interest'],
+            componentRestrictions: { country: 'IN' },
+            fields: ['formatted_address', 'geometry', 'address_components', 'name'],
+            bounds: new window.google.maps.LatLngBounds(
+              new window.google.maps.LatLng(17.2, 78.2),
+              new window.google.maps.LatLng(17.6, 78.8)
+            ),
+            strictBounds: false
+          }
+        );
+
+        societyAutocompleteRef.current.addListener('place_changed', handleSocietySelect);
+      } catch (error) {
+        console.error('Error initializing society autocomplete:', error);
       }
     }
   };
@@ -135,7 +185,6 @@ const PostProperty = () => {
   const handleLocalitySelect = () => {
     try {
       const place = localityAutocompleteRef.current.getPlace();
-      console.log('Locality selected:', place);
       
       if (place.geometry) {
         const lat = place.geometry.location.lat();
@@ -162,6 +211,28 @@ const PostProperty = () => {
       }
     } catch (error) {
       console.error('Error handling locality selection:', error);
+    }
+  };
+
+  const handleSocietySelect = () => {
+    try {
+      const place = societyAutocompleteRef.current.getPlace();
+      
+      if (place.geometry) {
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        
+        setFormData(prev => ({
+          ...prev,
+          societyName: place.name || '',
+          coordinates: { lat, lng },
+          mapLink: `https://maps.google.com/?q=${lat},${lng}`
+        }));
+
+        moveMapToLocation(lat, lng);
+      }
+    } catch (error) {
+      console.error('Error handling society selection:', error);
     }
   };
 
@@ -247,31 +318,13 @@ const PostProperty = () => {
     if (link.trim()) {
       const coords = extractCoordinatesFromMapLink(link);
       if (coords) {
-        if (window.google) {
-          const geocoder = new window.google.maps.Geocoder();
-          geocoder.geocode({ location: coords }, (results: any, status: string) => {
-            if (status === 'OK' && results[0]) {
-              let localityName = '';
-              
-              results[0].address_components.forEach((component: any) => {
-                if (component.types.includes('sublocality_level_1') || 
-                    component.types.includes('sublocality') ||
-                    component.types.includes('neighborhood')) {
-                  localityName = component.long_name;
-                }
-              });
-              
-              setFormData(prev => ({
-                ...prev,
-                locality: localityName,
-                coordinates: coords,
-                mapLink: `https://maps.google.com/?q=${coords.lat},${coords.lng}`
-              }));
-              
-              moveMapToLocation(coords.lat, coords.lng);
-            }
-          });
-        }
+        setFormData(prev => ({
+          ...prev,
+          coordinates: coords,
+          mapLink: `https://maps.google.com/?q=${coords.lat},${coords.lng}`
+        }));
+        
+        moveMapToLocation(coords.lat, coords.lng);
       }
     }
   };
@@ -279,11 +332,12 @@ const PostProperty = () => {
   const toggleMapLinkMode = () => {
     setUseMapLink(!useMapLink);
     if (!useMapLink) {
-      setFormData(prev => ({ ...prev, locality: '' }));
+      setFormData(prev => ({ ...prev, locality: '', societyName: '' }));
     } else {
       setMapLinkInput('');
       setTimeout(() => {
         initializeLocalityAutocomplete();
+        initializeSocietyAutocomplete();
       }, 100);
     }
   };
@@ -300,6 +354,11 @@ const PostProperty = () => {
     setFormData(prev => ({ ...prev, image: file }));
   };
 
+  const handlePlotDiagramChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFormData(prev => ({ ...prev, plotDiagram: file }));
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -307,6 +366,14 @@ const PostProperty = () => {
     const token = localStorage.getItem('token');
     if (!token) {
       alert('You must be logged in');
+      navigate('/');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validation
+    if (!formData.locality) {
+      alert('Please enter a locality');
       setIsSubmitting(false);
       return;
     }
@@ -314,7 +381,6 @@ const PostProperty = () => {
     const data = new FormData();
     
     // Add all text fields
-    data.append('projectName', formData.projectName);
     data.append('developmentType', formData.developmentType);
     data.append('totalArea', formData.totalArea);
     data.append('areaUnit', formData.areaUnit);
@@ -327,6 +393,7 @@ const PostProperty = () => {
     data.append('developerRatio', formData.developerRatio);
     data.append('city', formData.city);
     data.append('locality', formData.locality);
+    data.append('societyName', formData.societyName);
     data.append('landmark', formData.landmark);
     data.append('map', formData.mapLink);
     data.append('coordinates', JSON.stringify(formData.coordinates));
@@ -335,9 +402,12 @@ const PostProperty = () => {
     data.append('description', formData.description);
     data.append('selectedAmenities', JSON.stringify([]));
     
-    // Add image if present
+    // Add images if present
     if (formData.image) {
       data.append('image', formData.image);
+    }
+    if (formData.plotDiagram) {
+      data.append('plotDiagram', formData.plotDiagram);
     }
 
     try {
@@ -350,7 +420,6 @@ const PostProperty = () => {
       });
 
       const responseText = await res.text();
-      console.log('Response:', responseText);
       
       let json;
       try {
@@ -363,31 +432,8 @@ const PostProperty = () => {
         throw new Error(json.error || json.details || 'Failed to post property');
       }
       
-      alert('Property Posted Successfully!');
-      
-      // Reset form
-      setFormData({
-        projectName: '',
-        developmentType: '',
-        totalArea: '',
-        areaUnit: 'Sq Yards',
-        northSideLength: '',
-        southSideLength: '',
-        eastSideLength: '',
-        westSideLength: '',
-        facing: '',
-        roadSize: '',
-        developerRatio: '',
-        city: 'Hyderabad',
-        locality: '',
-        landmark: '',
-        coordinates: { lat: 17.385044, lng: 78.486671 },
-        mapLink: '',
-        goodwill: '',
-        advance: '',
-        description: '',
-        image: null,
-      });
+      alert('Property submitted successfully! It will be visible after admin approval.');
+      navigate('/');
       
     } catch (err: any) {
       console.error('Submit error:', err);
@@ -406,15 +452,6 @@ const PostProperty = () => {
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-6 space-y-6">
       <h2 className="text-2xl font-bold text-teal-700">Property Details</h2>
       
-      <input 
-        name="projectName" 
-        value={formData.projectName} 
-        onChange={handleChange} 
-        placeholder="Project Name" 
-        className="w-full border p-2 rounded" 
-        required 
-      />
-      
       <select 
         name="developmentType" 
         value={formData.developmentType} 
@@ -422,7 +459,7 @@ const PostProperty = () => {
         className="w-full border p-2 rounded" 
         required
       >
-        <option value="">Select Development Type</option>
+        <option value="">Select Development Type *</option>
         <option value="villa">Villa</option>
         <option value="standalone">Standalone</option>
         <option value="high-rise">High-rise</option>
@@ -435,7 +472,7 @@ const PostProperty = () => {
           name="totalArea" 
           value={formData.totalArea} 
           onChange={handleChange} 
-          placeholder="Total Area" 
+          placeholder="Total Area *" 
           className="border p-2 rounded" 
           type="number"
           min="0"
@@ -499,6 +536,28 @@ const PostProperty = () => {
               step="any"
             />
           </div>
+          
+          {/* Plot Diagram Upload */}
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Upload 2D Plot Diagram (Optional)
+            </label>
+            <p className="text-xs text-gray-500 mb-3">
+              Upload a simple 2D diagram showing the plot boundaries with measurements. 
+              Accepted formats: JPG, PNG, PDF (Max 5MB)
+            </p>
+            <input 
+              type="file" 
+              onChange={handlePlotDiagramChange} 
+              className="border p-2 w-full rounded bg-white" 
+              accept="image/*,.pdf"
+            />
+            {formData.plotDiagram && (
+              <p className="text-sm text-green-600 mt-2">
+                ✓ {formData.plotDiagram.name}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -517,7 +576,7 @@ const PostProperty = () => {
           onChange={e => setFormData(prev => ({ ...prev, roadSize: e.target.value }))} 
           className="border p-2 rounded"
         >
-          <option value="">Select Road Size (m)</option>
+          <option value="">Select Road Size (ft)</option>
           {roadSizes.map(size => <option key={size} value={size}>{size}</option>)}
         </select>
         <input 
@@ -525,7 +584,7 @@ const PostProperty = () => {
           value={formData.roadSize} 
           onChange={handleChange} 
           className="border p-2 rounded flex-grow" 
-          placeholder="Or enter road size" 
+          placeholder="Or enter road size (in feet)" 
         />
       </div>
 
@@ -594,28 +653,45 @@ const PostProperty = () => {
             />
           </div>
         ) : (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Locality *
-              <button
-                type="button"
-                onClick={handleUseCurrentLocation}
-                className="ml-2 text-xs text-teal-600 hover:text-teal-800 bg-teal-50 px-2 py-1 rounded"
-              >
-                Use Current Location
-              </button>
-            </label>
-            <input 
-              ref={localityInputRef}
-              name="locality" 
-              value={formData.locality} 
-              onChange={handleChange} 
-              placeholder="Enter locality" 
-              className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-teal-500" 
-              disabled={!isMapLoaded}
-              required
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Locality *
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  className="ml-2 text-xs text-teal-600 hover:text-teal-800 bg-teal-50 px-2 py-1 rounded"
+                >
+                  Use Current Location
+                </button>
+              </label>
+              <input 
+                ref={localityInputRef}
+                name="locality" 
+                value={formData.locality} 
+                onChange={handleChange} 
+                placeholder="Enter locality (e.g., Gachibowli, Kondapur)" 
+                className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-teal-500" 
+                disabled={!isMapLoaded}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Society / Apartment Name (Optional)
+              </label>
+              <input 
+                ref={societyInputRef}
+                name="societyName" 
+                value={formData.societyName} 
+                onChange={handleChange} 
+                placeholder="Enter society or apartment name" 
+                className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-teal-500" 
+                disabled={!isMapLoaded}
+              />
+            </div>
+          </>
         )}
 
         <div>
@@ -624,18 +700,19 @@ const PostProperty = () => {
             name="landmark" 
             value={formData.landmark} 
             onChange={handleChange} 
-            placeholder="e.g. Near Metro Station" 
+            placeholder="e.g., Near Metro Station, Main Road" 
             className="w-full border p-2 rounded focus:ring-2 focus:ring-teal-500"
             required
           />
         </div>
 
-        {formData.locality && (
+        {(formData.locality || formData.societyName) && (
           <div className="p-3 bg-teal-50 rounded-lg">
             <p className="text-sm text-teal-700">
               <strong>Selected Location:</strong>
             </p>
             <p className="text-sm text-gray-700">
+              {formData.societyName && `${formData.societyName}, `}
               {formData.locality}, {formData.landmark}, {formData.city}
             </p>
           </div>
@@ -643,6 +720,12 @@ const PostProperty = () => {
       </div>
 
       <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">
+          Mark Location on Map *
+        </label>
+        <p className="text-xs text-gray-500 mb-2">
+          Click on the map or drag the marker to mark the exact property location
+        </p>
         <div 
           id="map" 
           className="w-full h-80 rounded-lg border bg-gray-100"
@@ -650,7 +733,7 @@ const PostProperty = () => {
         ></div>
       </div>
 
-      <h2 className="text-2xl font-bold text-teal-700 mt-6">Pricing</h2>
+      <h2 className="text-2xl font-bold text-teal-700 mt-6">Pricing (Optional)</h2>
       <input 
         name="goodwill" 
         onChange={handleChange} 
@@ -671,11 +754,11 @@ const PostProperty = () => {
         name="description" 
         onChange={handleChange} 
         value={formData.description} 
-        placeholder="Property Description" 
+        placeholder="Property Description (Optional)" 
         className="w-full border p-2 rounded h-24" 
       />
 
-      <h2 className="text-2xl font-bold text-teal-700 mt-6">Gallery</h2>
+      <h2 className="text-2xl font-bold text-teal-700 mt-6">Property Image</h2>
       <input 
         type="file" 
         onChange={handleImageChange} 
@@ -685,11 +768,15 @@ const PostProperty = () => {
 
       <button 
         type="submit" 
-        className="bg-teal-700 text-white px-8 py-3 rounded-lg hover:bg-teal-800 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+        className="bg-teal-700 text-white px-8 py-3 rounded-lg hover:bg-teal-800 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed w-full"
         disabled={!isMapLoaded || isSubmitting}
       >
-        {isSubmitting ? 'Posting...' : 'Post Property'}
+        {isSubmitting ? 'Submitting for Approval...' : 'Submit Property for Approval'}
       </button>
+      
+      <p className="text-sm text-gray-600 text-center">
+        Your property will be reviewed by admin before being published
+      </p>
     </form>
   );
 };
