@@ -11,47 +11,44 @@ const OTP = require('../models/OTP');
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
-const buildOtpMessage = (otp) => {
-  const template = process.env.AIRTEL_TEMPLATE_TEXT || 'Your OTP is {{otp}}';
-  return template.replace('{{otp}}', otp);
-};
-
-// ====== Airtel Sender ======
-const sendOTPViaAirtel = async (phone, otp) => {
+// ====== SMS Sender (uniquedigitaloutreach) ======
+const sendOTPViaSMS = async (phone, otp) => {
   if (process.env.NODE_ENV === 'development' && process.env.MOCK_OTP === 'true') {
-    const mock = { mock: true, note: 'Skipped Airtel send in dev (no balance)' };
+    const mock = { mock: true, note: 'Skipped SMS send in dev (MOCK_OTP=true)' };
     console.log(`MOCK OTP -> ${otp} to ${phone}`, mock);
     return mock;
   }
 
-  const endpoint = process.env.AIRTEL_ENDPOINT;
-  if (!endpoint) throw new Error('AIRTEL_ENDPOINT not set');
+  const endpoint = 'https://api.uniquedigitaloutreach.com/v1/sms';
+  const apiKey = process.env.SMS_API_KEY || 'oZXPyKMN7FY0rwd6LV5f4P6KOoyTOR';
+  const sender = process.env.SMS_SENDER || 'INVHST';
+  const templateId = process.env.SMS_TEMPLATE_ID || '1007877623645681439';
 
-  const basic = Buffer
-    .from(`${process.env.AIRTEL_USERNAME}:${process.env.AIRTEL_PASSWORD}`)
-    .toString('base64');
+  // The DLT-registered template uses {#var#} as the OTP placeholder
+  const text = `${otp} One time Password(OTP) for phone verification on www.landsdevelop.com real estate platform`;
 
   const payload = {
-    customerId: process.env.AIRTEL_CUSTOMER_ID,
-    destinationAddress: [`91${phone}`],
-    dltTemplateId: process.env.AIRTEL_TEMPLATE_ID,
-    entityId: process.env.AIRTEL_ENTITY_ID,
-    message: buildOtpMessage(otp),
-    messageType: 'TEXT',
-    sourceAddress: process.env.AIRTEL_HEADER_ID
+    sender,
+    to: `91${phone}`,       // prepend country code
+    text,
+    type: 'OTP',
+    templateId
   };
 
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Basic ${basic}`
+    'apikey': apiKey
   };
 
+  console.log(`📤 Sending OTP ${otp} to 91${phone}...`);
+
   const resp = await axios.post(endpoint, payload, { headers, timeout: 15000 });
-  console.log('Airtel response:', resp.status, JSON.stringify(resp.data));
+  console.log('SMS API response:', resp.status, JSON.stringify(resp.data));
 
   if (resp.status < 200 || resp.status >= 300) {
-    throw new Error(`Airtel returned non-2xx: ${resp.status}`);
+    throw new Error(`SMS API returned non-2xx: ${resp.status}`);
   }
+
   return resp.data;
 };
 
@@ -65,9 +62,12 @@ router.post('/send-otp', async (req, res) => {
       return res.status(400).json({ message: 'Invalid phone number. Please enter 10 digits.' });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = generateOTP();
 
+    // Remove any existing OTPs for this phone
     await OTP.deleteMany({ phone });
+
+    // Save new OTP
     await new OTP({
       phone,
       otp,
@@ -76,15 +76,18 @@ router.post('/send-otp', async (req, res) => {
 
     console.log(`🔐 OTP for ${phone} is: ${otp}`);
 
+    // Send via SMS
+    await sendOTPViaSMS(phone, otp);
+
     return res.json({
       success: true,
-      message: 'OTP generated successfully (check console)',
-      otp // optional for debug; can remove in prod
+      message: 'OTP sent successfully to your phone number'
+      // ⚠️  Do NOT return otp in production — remove the line below if you add it back
     });
 
   } catch (err) {
-    console.error('Send OTP error:', err);
-    res.status(500).json({ message: 'Internal server error during OTP send' });
+    console.error('Send OTP error:', err.message || err);
+    res.status(500).json({ message: 'Failed to send OTP. Please try again.' });
   }
 });
 
@@ -114,12 +117,8 @@ router.post('/verify-otp', async (req, res) => {
     const existingUser = await User.findOne({ phone });
 
     if (existingUser) {
-      // ✅ Include phone in JWT token
       const token = jwt.sign(
-        { 
-          id: existingUser._id,
-          phone: existingUser.phone  // Add phone to token
-        },
+        { id: existingUser._id, phone: existingUser.phone },
         process.env.JWT_SECRET || 'secret',
         { expiresIn: '7d' }
       );
@@ -143,6 +142,7 @@ router.post('/verify-otp', async (req, res) => {
       userExists: false,
       message: 'OTP verified. Please complete your profile.'
     });
+
   } catch (err) {
     console.error('Verify OTP error:', err);
     res.status(500).json({ message: 'OTP verification failed' });
@@ -158,7 +158,7 @@ router.post('/complete-signup', async (req, res) => {
       return res.status(400).json({ message: 'Phone and first name are required' });
     }
 
-    // Ensure OTP was verified recently
+    // Ensure OTP was verified recently (within last 10 minutes)
     const verifiedOTP = await OTP.findOne({
       phone,
       verified: true,
@@ -185,12 +185,8 @@ router.post('/complete-signup', async (req, res) => {
     await newUser.save();
     await OTP.deleteMany({ phone });
 
-    // ✅ Include phone in JWT token
     const token = jwt.sign(
-      { 
-        id: newUser._id,
-        phone: newUser.phone  // Add phone to token
-      },
+      { id: newUser._id, phone: newUser.phone },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '7d' }
     );
@@ -205,13 +201,14 @@ router.post('/complete-signup', async (req, res) => {
         phone: newUser.phone
       }
     });
+
   } catch (err) {
     console.error('Complete signup error:', err);
     res.status(500).json({ message: 'Signup failed' });
   }
 });
 
-// User by phone
+// Get user by phone
 router.get('/user/:phone', async (req, res) => {
   try {
     const user = await User.findOne({ phone: req.params.phone });
