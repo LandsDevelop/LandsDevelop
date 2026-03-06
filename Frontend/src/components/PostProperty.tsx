@@ -411,7 +411,7 @@ const PostProperty = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:5174/api/add', {
+      const res = await fetch('https://landsdevelop25.onrender.com/api/add', {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`

@@ -128,7 +128,7 @@ const PropertiesListingPage: React.FC = () => {
       if (filters.maxArea) params.append('maxArea', filters.maxArea);
       if (filters.ratio !== 'All') params.append('ratio', filters.ratio);
 
-      const response = await fetch(`http://localhost:5174/api/search?${params.toString()}`);
+      const response = await fetch(`https://landsdevelop25.onrender.com/api/search?${params.toString()}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -503,7 +503,7 @@ const PropertiesListingPage: React.FC = () => {
                     {/* Property Image */}
                     <div className={`relative ${viewMode === 'list' ? 'w-64 flex-shrink-0' : 'h-48'} bg-gray-200 overflow-hidden ${viewMode === 'grid' ? 'rounded-t-lg' : 'rounded-l-lg'}`}>
                       <img
-                        src={property.imageUrl ? `http://localhost:5174${property.imageUrl}` : 'https://via.placeholder.com/400x300?text=No+Image'}
+                        src={property.imageUrl ? `https://landsdevelop25.onrender.com${property.imageUrl}` : 'https://via.placeholder.com/400x300?text=No+Image'}
                         alt={property.projectName}
                         className="w-full h-full object-cover"
                         onError={(e) => {

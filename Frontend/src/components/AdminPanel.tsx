@@ -60,7 +60,7 @@ const AdminPanel: React.FC = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5174/api/admin/properties', {
+      const res = await fetch('https://landsdevelop25.onrender.com/api/admin/properties', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -107,7 +107,7 @@ const AdminPanel: React.FC = () => {
   const handleApprove = async (id: string) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5174/api/admin/properties/${id}/approve`, {
+      const res = await fetch(`https://landsdevelop25.onrender.com/api/admin/properties/${id}/approve`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -133,7 +133,7 @@ const AdminPanel: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5174/api/admin/properties/${id}/reject`, {
+      const res = await fetch(`https://landsdevelop25.onrender.com/api/admin/properties/${id}/reject`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -281,7 +281,7 @@ const AdminPanel: React.FC = () => {
                     {/* Image */}
                     <div className="w-32 h-32 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden">
                       <img
-                        src={property.imageUrl ? `http://localhost:5174${property.imageUrl}` : 'https://via.placeholder.com/150'}
+                        src={property.imageUrl ? `https://landsdevelop25.onrender.com${property.imageUrl}` : 'https://via.placeholder.com/150'}
                         alt="Property"
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -387,7 +387,7 @@ const AdminPanel: React.FC = () => {
                 <div>
                   <h3 className="font-semibold mb-2">Property Image</h3>
                   <img
-                    src={selectedProperty.imageUrl ? `http://localhost:5174${selectedProperty.imageUrl}` : 'https://via.placeholder.com/400'}
+                    src={selectedProperty.imageUrl ? `https://landsdevelop25.onrender.com${selectedProperty.imageUrl}` : 'https://via.placeholder.com/400'}
                     alt="Property"
                     className="w-full h-64 object-cover rounded-lg"
                   />
@@ -396,7 +396,7 @@ const AdminPanel: React.FC = () => {
                   <div>
                     <h3 className="font-semibold mb-2">Plot Diagram</h3>
                     <img
-                      src={`http://localhost:5174${selectedProperty.plotDiagramUrl}`}
+                      src={`https://landsdevelop25.onrender.com${selectedProperty.plotDiagramUrl}`}
                       alt="Plot Diagram"
                       className="w-full h-64 object-contain rounded-lg border"
                     />
@@ -496,3 +496,7 @@ const AdminPanel: React.FC = () => {
 };
 
 export default AdminPanel;
+
+
+
+

@@ -14,7 +14,7 @@ const PropertyDetails: React.FC = () => {
   useEffect(() => {
     const fetchProperty = async () => {
       try {
-        const res = await fetch(`http://localhost:5174/api/properties/${id}`);
+        const res = await fetch(`https://landsdevelop25.onrender.com/api/properties/${id}`);
         const data = await res.json();
         if (res.ok) {
           setProperty(data.project);
@@ -42,7 +42,7 @@ const PropertyDetails: React.FC = () => {
     if (!property?._id) return;
 
     try {
-      await fetch('http://localhost:5174/api/interests', {
+      await fetch('https://landsdevelop25.onrender.com/api/interests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -120,7 +120,7 @@ const PropertyDetails: React.FC = () => {
           {/* Property Image */}
           <div className="relative h-[500px]">
             <img
-              src={property.imageUrl ? `http://localhost:5174${property.imageUrl}` : 'https://via.placeholder.com/800x500?text=No+Image'}
+              src={property.imageUrl ? `https://landsdevelop25.onrender.com${property.imageUrl}` : 'https://via.placeholder.com/800x500?text=No+Image'}
               alt={property.projectName || 'Property'}
               className="w-full h-full object-cover"
               onError={(e) => {
